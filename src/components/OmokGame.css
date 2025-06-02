@@ -1,0 +1,132 @@
+.game-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.game-status {
+  height: 42px;
+  display: flex;
+  width: 40%;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.btn-container {
+  display: flex;
+}
+
+.btn-container div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 42px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.checkBtn {
+  margin-right: 15px;
+  color: #fff;
+  background-color: #07b9d3;
+}
+
+.checkBtn:hover {
+  background-color: #018396;
+}
+
+.passBtn {
+  background-color: #d2d2d2;
+}
+
+.passBtn:hover {
+  color: #fff;
+  background-color: #a1a1a1;
+}
+
+.board {
+  display: grid;
+  background-color: #fef3c7;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.cell {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+}
+
+.lines::before,
+.lines::after {
+  content: '';
+  position: absolute;
+  background-color: #92400e;
+}
+
+.lines::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.lines::after {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background-color: rgba(251, 191, 36, 0.5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: background-color 0.2s;
+}
+
+.cell:hover .dot {
+  background-color: rgba(251, 191, 36, 0.8);
+}
+
+.stone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+}
+
+.stone.black {
+  background-color: black;
+}
+
+.stone.white {
+  background-color: white;
+  border: 2px solid #ccc;
+}
+
+.stone.preview {
+  opacity: 0.6;
+  z-index: 1;
+}

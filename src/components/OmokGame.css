@@ -8,15 +8,143 @@
   padding: 20px;
 }
 
+/* === 새로 추가된 플레이어 정보 바 === */
+.player-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  min-width: 500px;
+}
+
+.player-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.player-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+  opacity: 0.9;
+}
+
+.player-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 5px 12px;
+  border-radius: 8px;
+  min-width: 80px;
+  text-align: center;
+}
+
+.vs-divider {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin: 0 20px;
+  opacity: 0.8;
+}
+
 .game-status {
   height: 42px;
   display: flex;
   width: 40%;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   font-size: 1.25rem;
   text-align: center;
+}
+
+/* === 현재 플레이어 표시 === */
+.current-player {
+  font-size: 1rem;
+  color: #333;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.my-turn-indicator {
+  color: #07b9d3;
+  font-weight: bold;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* === 승리자 표시 === */
+.winner-name {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #ffd700;
+  margin: 5px 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* === 연결 상태 표시 === */
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8f9fa;
+  padding: 8px 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  min-width: 300px;
+  border: 1px solid #e9ecef;
+}
+
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.connection-indicator.connected {
+  color: #28a745;
+}
+
+.connection-indicator.disconnected {
+  color: #dc3545;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.room-id {
+  font-family: 'Courier New', monospace;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #667eea;
+  font-weight: bold;
+  border: 1px solid #dee2e6;
+  letter-spacing: 1px;
 }
 
 .btn-container {
@@ -147,7 +275,7 @@
 }
 
 .stone.black-70 {
-  background-color: #494949;
+  background-color: #5e5e5e;
   color: #ffffff;
 }
 
@@ -188,5 +316,37 @@
   }
   100% {
     transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+/* === 반응형 디자인 === */
+@media (max-width: 768px) {
+  .player-info-bar {
+    min-width: auto;
+    width: 90%;
+    padding: 12px 20px;
+  }
+
+  .player-name {
+    font-size: 1rem;
+    min-width: 60px;
+  }
+
+  .vs-divider {
+    margin: 0 15px;
+  }
+
+  .connection-status {
+    min-width: auto;
+    width: 90%;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .game-status {
+    width: 90%;
+    flex-direction: column;
+    height: auto;
+    gap: 10px;
   }
 }

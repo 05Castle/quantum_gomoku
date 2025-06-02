@@ -63,12 +63,12 @@ const OmokGame = () => {
 
   const placeStone = useCallback(
     (row, col) => {
-      if (gameOver || board[row][col] !== EMPTY) return;
+      if (gameOver || board[row][col] !== EMPTY || hasPlacedStone) return;
 
       const newBoard = board.map((row) => [...row]);
       newBoard[row][col] = currentPlayer;
       setBoard(newBoard);
-      setHasPlacedStone(true); // 돌 놓음
+      setHasPlacedStone(true);
 
       if (checkWin(newBoard, row, col, currentPlayer)) {
         setWinner(currentPlayer);
@@ -76,7 +76,7 @@ const OmokGame = () => {
         setShowModal(true);
       }
     },
-    [board, currentPlayer, gameOver, checkWin]
+    [board, currentPlayer, gameOver, checkWin, hasPlacedStone]
   );
 
   const handlePass = () => {

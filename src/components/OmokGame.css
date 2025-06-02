@@ -132,8 +132,8 @@
 }
 
 .stone.preview {
-  opacity: 0.6;
-  z-index: 1;
+  opacity: 0.7;
+  z-index: 99;
 }
 
 .stone.white {
@@ -174,43 +174,19 @@
   border: 2px solid #ccc;
 }
 
-/* 모달 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+.stone.winning {
+  animation: winning-pulse 1s ease-in-out infinite alternate;
+  box-shadow:
+    0 0 15px #ffd700,
+    0 0 30px #ffd700;
+  border: 3px solid #ffd700 !important;
 }
 
-.modal-content {
-  background-color: white;
-  padding: 2rem 3rem;
-  border-radius: 1rem;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-}
-
-.modal-content h2 {
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-}
-
-.modal-content button {
-  padding: 0.5rem 1.5rem;
-  background-color: #d97706;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.modal-content button:hover {
-  background-color: #b45309;
+@keyframes winning-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
 }

@@ -18,19 +18,6 @@ const TURN_SEQUENCE = [
   { player: 'white', type: 70 },
 ];
 
-const WinnerModal = ({ winner, onClose }) => {
-  const winnerText = winner === 'black' ? '⚫ 흑돌 승리!' : '⚪ 백돌 승리!';
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>{winnerText}</h2>
-        <button onClick={onClose}>확인</button>
-      </div>
-    </div>
-  );
-};
-
 const OmokGame = () => {
   const [board, setBoard] = useState(() =>
     Array(BOARD_SIZE)
@@ -46,11 +33,20 @@ const OmokGame = () => {
   const [winner, setWinner] = useState(null);
   const [gameOver, setGameOver] = useState(false);
   const [hoveredCell, setHoveredCell] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [hasPlacedStone, setHasPlacedStone] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
+  const [winningStones, setWinningStones] = useState([]);
 
   const currentTurn = TURN_SEQUENCE[turnIndex];
+
+  const playSound = (soundFile) => {
+    try {
+      const audio = new Audio(`/sounds/${soundFile}`);
+      audio.play().catch((err) => console.log('Sound play failed:', err));
+    } catch (error) {
+      console.log('Sound error:', error);
+    }
+  };
 
   // 돌 타입을 셀 값으로 변환
   const getStoneValue = (player, type) => {
@@ -125,6 +121,7 @@ const OmokGame = () => {
 
         for (let [dr, dc] of directions) {
           let count = 1;
+          let stones = [{ row, col }]; // 승리한 돌들 위치 저장
           let r = row + dr;
           let c = col + dc;
 
@@ -135,6 +132,7 @@ const OmokGame = () => {
               (player === 'white' && checkValue === WHITE_CONFIRMED)
             ) {
               count++;
+              stones.push({ row: r, col: c }); // 위치 추가
               r += dr;
               c += dc;
             } else {
@@ -142,7 +140,9 @@ const OmokGame = () => {
             }
           }
 
-          if (count >= 5) return player;
+          if (count >= 5) {
+            return { player, stones }; // 플레이어와 돌 위치들 반환
+          }
         }
       }
     }
@@ -154,12 +154,14 @@ const OmokGame = () => {
     (row, col) => {
       if (gameOver || board[row][col] !== EMPTY || hasPlacedStone) return;
 
+      playSound('place.mp3');
+
       const stoneValue = getStoneValue(currentTurn.player, currentTurn.type);
       const newBoard = board.map((row) => [...row]);
       const newOriginalBoard = originalBoard.map((row) => [...row]);
 
       newBoard[row][col] = stoneValue;
-      newOriginalBoard[row][col] = stoneValue; // 원본에도 저장
+      newOriginalBoard[row][col] = stoneValue;
 
       setBoard(newBoard);
       setOriginalBoard(newOriginalBoard);
@@ -171,9 +173,12 @@ const OmokGame = () => {
   // 체크 기능
   const handleCheck = () => {
     if (gameOver || hasChecked) return;
+
+    playSound('check.mp3');
+
     setHasChecked(true);
 
-    const newBoard = originalBoard.map((row) => [...row]); // 원본에서 시작
+    const newBoard = originalBoard.map((row) => [...row]);
     let hasChanges = false;
 
     // 모든 90돌과 70돌을 확률적으로 확정
@@ -204,11 +209,12 @@ const OmokGame = () => {
       setBoard(newBoard);
 
       // 승리 체크
-      const winnerPlayer = checkWin(newBoard);
-      if (winnerPlayer) {
-        setWinner(winnerPlayer);
+      const winResult = checkWin(newBoard);
+      if (winResult) {
+        setWinner(winResult.player);
+        setWinningStones(winResult.stones);
         setGameOver(true);
-        setShowModal(true);
+        playSound('win.mp3');
       }
     }
   };
@@ -226,6 +232,8 @@ const OmokGame = () => {
 
   // 게임 리셋
   const resetGame = () => {
+    playSound('start.mp3');
+
     const emptyBoard = Array(BOARD_SIZE)
       .fill(null)
       .map(() => Array(BOARD_SIZE).fill(EMPTY));
@@ -237,6 +245,7 @@ const OmokGame = () => {
     setGameOver(false);
     setHasPlacedStone(false);
     setHasChecked(false);
+    setWinningStones([]);
   };
 
   // 셀 렌더링
@@ -244,6 +253,9 @@ const OmokGame = () => {
     const cellValue = board[row][col];
     const stoneInfo = getStoneInfo(cellValue);
     const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
+    const isWinningStone = winningStones.some(
+      (stone) => stone.row === row && stone.col === col
+    );
 
     return (
       <div
@@ -264,7 +276,9 @@ const OmokGame = () => {
 
         {/* 실제 돌 */}
         {stoneInfo && (
-          <div className={getStoneClasses(stoneInfo)}>
+          <div
+            className={`${getStoneClasses(stoneInfo)} ${isWinningStone ? 'winning' : ''}`}
+          >
             {!stoneInfo.confirmed && stoneInfo.type}
           </div>
         )}
@@ -292,22 +306,37 @@ const OmokGame = () => {
     <div className="game-container">
       {/* 게임 상태 */}
       <div className="game-status">
-        <div>
-          현재 차례: {currentTurn.player === 'black' ? '⚫' : '⚪'}{' '}
-          {currentTurn.type}돌 ({currentTurn.type}% 확률)
-        </div>
-        {hasPlacedStone && (
-          <div className="btn-container">
-            <div
-              className={`btn check-btn ${hasChecked ? 'disabled' : ''}`}
-              onClick={hasChecked ? undefined : handleCheck}
-            >
-              체크!
+        {gameOver ? (
+          // 게임 종료 시: 승리자 + 리셋 버튼
+          <>
+            <div>🎉 {winner === 'black' ? '⚫ 흑돌' : '⚪ 백돌'} 승리! 🎉</div>
+            <div className="btn-container">
+              <div className="btn check-btn" onClick={resetGame}>
+                새 게임 시작!
+              </div>
             </div>
-            <div className="btn pass-btn" onClick={handlePass}>
-              넘어가기!
+          </>
+        ) : (
+          // 게임 진행 시: 기존 UI
+          <>
+            <div>
+              현재 차례: {currentTurn.player === 'black' ? '⚫' : '⚪'}{' '}
+              {currentTurn.type}돌 ({currentTurn.type}% 확률)
             </div>
-          </div>
+            {hasPlacedStone && (
+              <div className="btn-container">
+                <div
+                  className={`btn check-btn ${hasChecked ? 'disabled' : ''}`}
+                  onClick={hasChecked ? undefined : handleCheck}
+                >
+                  체크!
+                </div>
+                <div className="btn pass-btn" onClick={handlePass}>
+                  넘어가기!
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -320,17 +349,6 @@ const OmokGame = () => {
           row.map((_, colIndex) => renderCell(rowIndex, colIndex))
         )}
       </div>
-
-      {/* 승리 모달 */}
-      {showModal && (
-        <WinnerModal
-          winner={winner}
-          onClose={() => {
-            setShowModal(false);
-            resetGame();
-          }}
-        />
-      )}
     </div>
   );
 };

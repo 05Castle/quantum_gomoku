@@ -218,6 +218,7 @@ input[type='text']:disabled {
   letter-spacing: 1px;
 }
 
+/* 복사 버튼 */
 .copy-btn {
   background: none;
   border: none;
@@ -225,17 +226,43 @@ input[type='text']:disabled {
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: all 0.3s ease;
+  width: 33px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.copy-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
+.copy-btn:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.1);
+  transform: scale(1.1);
 }
 
-.room-instruction {
-  color: #6c757d;
-  font-size: 0.9rem;
-  margin: 0;
+.copy-btn:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.copy-btn:active {
+  transform: scale(0.95);
+}
+
+/* 복사 성공 시 애니메이션 */
+.copy-btn:disabled {
+  animation: copySuccess 0.3s ease-out;
+}
+
+@keyframes copySuccess {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* 로딩 인디케이터 */

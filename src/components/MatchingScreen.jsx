@@ -34,6 +34,9 @@ const MatchingScreen = () => {
   const [currentRoomId, setCurrentRoomId] = useState('');
   const [currentPlayerRole, setCurrentPlayerRole] = useState('');
 
+  // 복사 버튼 상태 추가
+  const [isCopied, setIsCopied] = useState(false);
+
   // Firestore 구독 해제 함수
   const [unsubscribeRoom, setUnsubscribeRoom] = useState(null);
 
@@ -253,22 +256,29 @@ const MatchingScreen = () => {
     setMatchingState('nickname-input');
   };
 
-  // 방 ID 복사
-  const copyRoomId = () => {
-    navigator.clipboard
-      .writeText(roomId)
-      .then(() => {
-        alert('방 ID가 복사되었습니다!');
-      })
-      .catch(() => {
-        alert('복사에 실패했습니다. 수동으로 복사해주세요.');
-      });
+  // 방 ID 복사 (개선된 버전)
+  const copyRoomId = async () => {
+    try {
+      await navigator.clipboard.writeText(roomId);
+
+      // 복사 성공 시 체크 이모지로 변경
+      setIsCopied(true);
+
+      // 2초 후 원래 이모지로 되돌리기
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    } catch (error) {
+      // 복사 실패 시 기존 alert 사용
+      console.error('복사 실패:', error);
+      alert('복사에 실패했습니다. 수동으로 복사해주세요.');
+    }
   };
 
   return (
     <div className="matching-container">
       <div className="matching-card">
-        <h1 className="game-title">🎯 양자 오목</h1>
+        <h1 className="game-title">양자 오목</h1>
 
         {/* 닉네임 입력 화면 */}
         {matchingState === 'nickname-input' && (
@@ -350,8 +360,12 @@ const MatchingScreen = () => {
               <div className="room-id-display">
                 <span>방 ID: </span>
                 <strong>{roomId}</strong>
-                <button className="copy-btn" onClick={copyRoomId}>
-                  📋
+                <button
+                  className="copy-btn"
+                  onClick={copyRoomId}
+                  disabled={isCopied}
+                >
+                  {isCopied ? '✅' : '📋'}
                 </button>
               </div>
               <p className="room-instruction">

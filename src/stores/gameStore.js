@@ -98,6 +98,38 @@ export const useGameStore = create((set, get) => ({
       totalChecksUsed: 0,
     }),
 
+  // 방 나가기 (별명은 유지하되 매칭 상태만 삭제)
+  exitRoom: () => {
+    const state = get();
+    set({
+      // 연결 및 방 정보 완전 초기화
+      isConnected: false,
+      opponentNickname: '',
+      playerRole: null,
+      roomId: '',
+
+      // 게임 상태 초기화
+      board: createEmptyBoard(),
+      originalBoard: createEmptyBoard(),
+      turnIndex: 0,
+      winner: null,
+      gameOver: false,
+      hasPlacedStone: false,
+      hasChecked: false,
+      winningStones: [],
+
+      // 체크 횟수 초기화
+      hostCheckCount: MAX_CHECKS_PER_PLAYER,
+      guestCheckCount: MAX_CHECKS_PER_PLAYER,
+      totalChecksUsed: 0,
+
+      // 중요: 매칭 상태를 방 선택 단계로 되돌림
+      matchingState: 'matching',
+
+      // myNickname만 유지
+    });
+  },
+
   // 돌 놓기
   placeStone: (row, col) => {
     const state = get();

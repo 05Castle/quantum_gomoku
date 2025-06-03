@@ -56,13 +56,17 @@ export const createRoom = async (hostNickname) => {
       currentAction: null,
       gameState: null,
 
+      // 체크 횟수 관리
+      hostCheckCount: 4,
+      guestCheckCount: 4,
+      totalChecksUsed: 0,
+
       // 메타데이터
       roomId: roomId,
     };
 
     await createDocument('rooms', roomId, roomData);
 
-    console.log(`방 생성 성공: ${roomId} (호스트: ${hostNickname})`);
     return { success: true, roomId };
   } catch (error) {
     console.error('방 생성 실패:', error);
@@ -122,7 +126,6 @@ export const joinRoom = async (roomId, guestNickname) => {
     // 업데이트된 방 데이터 반환
     const updatedRoomData = await getDocument('rooms', roomId);
 
-    console.log(`방 참가 성공: ${roomId} (게스트: ${guestNickname})`);
     return { success: true, roomData: updatedRoomData };
   } catch (error) {
     console.error('방 참가 실패:', error);
@@ -137,26 +140,19 @@ export const joinRoom = async (roomId, guestNickname) => {
  * @returns {object} - { success: boolean, error?: string }
  */
 export const sendGameAction = async (roomId, actionData) => {
-  console.log('=== sendGameAction 호출 ===');
-  console.log('roomId:', roomId);
-  console.log('보낼 액션:', actionData);
-  console.log('액션 타입:', actionData.action);
-
   try {
     // 방 존재 여부 확인
     const roomData = await getDocument('rooms', roomId);
 
     if (!roomData) {
-      console.error('❌ 방을 찾을 수 없습니다');
       return { success: false, error: '방을 찾을 수 없습니다.' };
     }
 
-    // ✅ 리셋 액션은 게임 상태와 관계없이 허용
+    // 리셋 액션은 게임 상태와 관계없이 허용
     if (
       actionData.action !== 'reset_game' &&
       roomData.status !== ROOM_STATUS.PLAYING
     ) {
-      console.error('❌ 게임이 진행 중이 아닙니다:', roomData.status);
       return { success: false, error: '게임이 진행 중이 아닙니다.' };
     }
 
@@ -166,29 +162,44 @@ export const sendGameAction = async (roomId, actionData) => {
         ...actionData,
         timestamp: Date.now(),
       },
-      currentTurnIndex: actionData.turnIndex || 0,
     };
 
-    // ✅ 리셋 액션인 경우 상태를 다시 playing으로 변경
+    // turnIndex가 있으면 추가
+    if (actionData.turnIndex !== undefined) {
+      updateData.currentTurnIndex = actionData.turnIndex;
+    }
+
+    // 체크 액션인 경우 체크 횟수 정보 동기화
+    if (actionData.action === 'check') {
+      if (actionData.hostCheckCount !== undefined) {
+        updateData.hostCheckCount = actionData.hostCheckCount;
+      }
+      if (actionData.guestCheckCount !== undefined) {
+        updateData.guestCheckCount = actionData.guestCheckCount;
+      }
+      if (actionData.totalChecksUsed !== undefined) {
+        updateData.totalChecksUsed = actionData.totalChecksUsed;
+      }
+    }
+
+    // 리셋 액션인 경우 상태 및 체크 횟수 초기화
     if (actionData.action === 'reset_game') {
       updateData.status = ROOM_STATUS.PLAYING;
-      console.log('리셋으로 인해 상태를 playing으로 변경');
+      updateData.hostCheckCount = 4;
+      updateData.guestCheckCount = 4;
+      updateData.totalChecksUsed = 0;
     }
 
     // 게임 종료 액션인 경우 상태 변경
     if (actionData.action === 'check' && actionData.gameOver) {
       updateData.status = ROOM_STATUS.FINISHED;
-      console.log('게임 종료로 상태 변경');
     }
-
-    console.log('Firestore 업데이트 데이터:', updateData);
 
     await updateDocument('rooms', roomId, updateData);
 
-    console.log('✅ 액션 전송 성공:', roomId, actionData.action);
     return { success: true };
   } catch (error) {
-    console.error('❌ 액션 전송 실패:', error);
+    console.error('액션 전송 실패:', error);
     return { success: false, error: getErrorMessage(error) };
   }
 };
@@ -201,8 +212,6 @@ export const sendGameAction = async (roomId, actionData) => {
  * @returns {function} - 구독 해제 함수
  */
 export const subscribeToRoom = (roomId, onRoomUpdate, onError) => {
-  console.log(`방 구독 시작: ${roomId}`);
-
   const unsubscribe = subscribeToDocument(
     'rooms',
     roomId,
@@ -214,10 +223,8 @@ export const subscribeToRoom = (roomId, onRoomUpdate, onError) => {
       }
 
       if (roomData) {
-        console.log(`방 업데이트 수신: ${roomId}`, roomData);
         onRoomUpdate(roomData);
       } else {
-        console.log(`방이 삭제됨: ${roomId}`);
         onError && onError('방이 삭제되었습니다.');
       }
     }
@@ -243,7 +250,6 @@ export const leaveRoom = async (roomId, playerRole) => {
     if (playerRole === 'host') {
       // 호스트가 나가면 방 삭제
       await deleteDocument('rooms', roomId);
-      console.log(`방 삭제: ${roomId} (호스트 퇴장)`);
     } else {
       // 게스트가 나가면 대기 상태로 복원
       const updateData = {
@@ -252,10 +258,13 @@ export const leaveRoom = async (roomId, playerRole) => {
         currentPlayerCount: 1,
         status: ROOM_STATUS.WAITING,
         currentAction: null,
+        // 체크 횟수도 초기화
+        hostCheckCount: 4,
+        guestCheckCount: 4,
+        totalChecksUsed: 0,
       };
 
       await updateDocument('rooms', roomId, updateData);
-      console.log(`게스트 퇴장: ${roomId}`);
     }
 
     return { success: true };
@@ -277,7 +286,6 @@ export const updateConnectionStatus = async (roomId, playerRole, connected) => {
     const updateData = { [field]: connected };
 
     await updateDocument('rooms', roomId, updateData);
-    console.log(`연결 상태 업데이트: ${roomId} ${playerRole} = ${connected}`);
   } catch (error) {
     console.error('연결 상태 업데이트 실패:', error);
   }

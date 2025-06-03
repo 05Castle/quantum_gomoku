@@ -8,7 +8,7 @@
   padding: 20px;
 }
 
-/* === 새로 추가된 플레이어 정보 바 === */
+/* === 플레이어 정보 바 === */
 .player-info-bar {
   display: flex;
   align-items: center;
@@ -89,6 +89,13 @@
 }
 
 /* === 승리자 표시 === */
+.winner-info {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+}
+
 .winner-name {
   font-size: 1.3rem;
   font-weight: bold;
@@ -160,6 +167,7 @@
   border-radius: 5px;
   font-weight: bold;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .check-btn {
@@ -172,6 +180,7 @@
   background-color: #018396;
 }
 
+/* === 체크 버튼 비활성화 상태 === */
 .check-btn.disabled {
   background-color: #ccc;
   cursor: not-allowed;
@@ -180,6 +189,36 @@
 
 .check-btn.disabled:hover {
   background-color: #ccc;
+}
+
+/* === 체크 횟수 소진 시 스타일 === */
+.check-btn.no-checks {
+  background-color: #6c757d;
+  color: #ffffff;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none !important; /* 호버 애니메이션 완전 제거 */
+  transition: none; /* 트랜지션도 제거 */
+}
+
+.check-btn.no-checks:hover {
+  background-color: #6c757d;
+  transform: none !important; /* 호버 시에도 애니메이션 없음 */
+}
+
+/* === 체크 횟수 부족 시 깜빡임 효과 === */
+.check-btn.no-checks {
+  animation: no-checks-blink 2s ease-in-out infinite;
+}
+
+@keyframes no-checks-blink {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .pass-btn {
@@ -348,5 +387,14 @@
     flex-direction: column;
     height: auto;
     gap: 10px;
+  }
+
+  .btn {
+    width: 140px;
+    font-size: 0.9rem;
+  }
+
+  .check-btn {
+    margin-right: 10px;
   }
 }

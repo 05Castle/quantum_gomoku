@@ -24,6 +24,10 @@ const GAME_ACTIONS = {
   RESET_GAME: 'reset_game',
 };
 
+// 체크 횟수 상수
+const MAX_CHECKS_PER_PLAYER = 4;
+const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 2; // 8회
+
 // 빈 보드 생성 함수
 const createEmptyBoard = () =>
   Array(BOARD_SIZE)
@@ -48,8 +52,13 @@ export const useGameStore = create((set, get) => ({
   hasChecked: false,
   winningStones: [],
 
+  // === 체크 횟수 관리 ===
+  hostCheckCount: MAX_CHECKS_PER_PLAYER,
+  guestCheckCount: MAX_CHECKS_PER_PLAYER,
+  totalChecksUsed: 0,
+
   // === 매칭 상태 ===
-  matchingState: 'nickname-input', // 'nickname-input' | 'matching' | 'waiting' | 'connecting' | 'playing'
+  matchingState: 'nickname-input',
 
   // === 액션들 ===
 
@@ -84,6 +93,9 @@ export const useGameStore = create((set, get) => ({
       hasPlacedStone: false,
       hasChecked: false,
       winningStones: [],
+      hostCheckCount: MAX_CHECKS_PER_PLAYER,
+      guestCheckCount: MAX_CHECKS_PER_PLAYER,
+      totalChecksUsed: 0,
     }),
 
   // 돌 놓기
@@ -114,7 +126,7 @@ export const useGameStore = create((set, get) => ({
       col,
       player: currentTurn.player,
       type: currentTurn.type,
-      turnIndex: turnIndex, // ✅ 추가
+      turnIndex: turnIndex,
       timestamp: Date.now(),
     };
   },
@@ -122,9 +134,22 @@ export const useGameStore = create((set, get) => ({
   // 체크 실행 (내가 체크를 눌렀을 때)
   executeCheck: () => {
     const state = get();
-    const { originalBoard, gameOver, hasChecked } = state;
+    const {
+      originalBoard,
+      gameOver,
+      hasChecked,
+      playerRole,
+      hostCheckCount,
+      guestCheckCount,
+      totalChecksUsed,
+    } = state;
 
     if (gameOver || hasChecked) return null;
+
+    // 내 체크 횟수 확인
+    const myCheckCount =
+      playerRole === 'host' ? hostCheckCount : guestCheckCount;
+    if (myCheckCount <= 0) return null;
 
     const newBoard = originalBoard.map((row) => [...row]);
     const checkResults = [];
@@ -158,6 +183,13 @@ export const useGameStore = create((set, get) => ({
     }
 
     if (hasChanges) {
+      // 체크 횟수 차감
+      const newHostCheckCount =
+        playerRole === 'host' ? hostCheckCount - 1 : hostCheckCount;
+      const newGuestCheckCount =
+        playerRole === 'guest' ? guestCheckCount - 1 : guestCheckCount;
+      const newTotalChecksUsed = totalChecksUsed + 1;
+
       // 승리 체크
       const winResult = checkWin(newBoard);
       let winner = null;
@@ -171,6 +203,9 @@ export const useGameStore = create((set, get) => ({
             board: newBoard,
             hasChecked: true,
             winningStones: winResult.stones,
+            hostCheckCount: newHostCheckCount,
+            guestCheckCount: newGuestCheckCount,
+            totalChecksUsed: newTotalChecksUsed,
           });
         } else {
           // 일반 승리
@@ -183,9 +218,12 @@ export const useGameStore = create((set, get) => ({
             winner,
             winningStones,
             gameOver,
+            hostCheckCount: newHostCheckCount,
+            guestCheckCount: newGuestCheckCount,
+            totalChecksUsed: newTotalChecksUsed,
           });
 
-          // ✅ 승리 사운드 추가
+          // 승리 사운드
           try {
             const audio = new Audio('/sounds/win.mp3');
             audio.play().catch((err) => console.log('Win sound failed:', err));
@@ -194,12 +232,33 @@ export const useGameStore = create((set, get) => ({
           }
         }
       } else {
-        // 승리 조건 없음
-        set({
-          board: newBoard,
-          hasChecked: true,
-          winningStones: [],
-        });
+        // 승리 조건 없음 - 무승부 체크
+        const shouldCheckDraw = newTotalChecksUsed >= TOTAL_MAX_CHECKS;
+
+        if (shouldCheckDraw) {
+          // 모든 체크를 사용했는데도 승부가 나지 않음 = 무승부
+          winner = 'draw';
+          gameOver = true;
+          set({
+            board: newBoard,
+            hasChecked: true,
+            winner,
+            winningStones: [],
+            gameOver,
+            hostCheckCount: newHostCheckCount,
+            guestCheckCount: newGuestCheckCount,
+            totalChecksUsed: newTotalChecksUsed,
+          });
+        } else {
+          set({
+            board: newBoard,
+            hasChecked: true,
+            winningStones: [],
+            hostCheckCount: newHostCheckCount,
+            guestCheckCount: newGuestCheckCount,
+            totalChecksUsed: newTotalChecksUsed,
+          });
+        }
       }
 
       return {
@@ -208,16 +267,50 @@ export const useGameStore = create((set, get) => ({
         winner,
         winningStones,
         gameOver,
+        hostCheckCount: newHostCheckCount,
+        guestCheckCount: newGuestCheckCount,
+        totalChecksUsed: newTotalChecksUsed,
         timestamp: Date.now(),
       };
     }
 
-    set({ hasChecked: true });
-    return null;
+    // 변화가 없어도 체크 횟수는 차감
+    const newHostCheckCount =
+      playerRole === 'host' ? hostCheckCount - 1 : hostCheckCount;
+    const newGuestCheckCount =
+      playerRole === 'guest' ? guestCheckCount - 1 : guestCheckCount;
+    const newTotalChecksUsed = totalChecksUsed + 1;
+
+    set({
+      hasChecked: true,
+      hostCheckCount: newHostCheckCount,
+      guestCheckCount: newGuestCheckCount,
+      totalChecksUsed: newTotalChecksUsed,
+    });
+
+    return {
+      action: GAME_ACTIONS.CHECK,
+      checkResults: [],
+      winner: null,
+      winningStones: [],
+      gameOver: false,
+      hostCheckCount: newHostCheckCount,
+      guestCheckCount: newGuestCheckCount,
+      totalChecksUsed: newTotalChecksUsed,
+      timestamp: Date.now(),
+    };
   },
 
   // 체크 결과 적용 (상대방이 보낸 결과)
-  applyCheckResults: (checkResults, winner, winningStones, gameOver) => {
+  applyCheckResults: (
+    checkResults,
+    winner,
+    winningStones,
+    gameOver,
+    hostCheckCount,
+    guestCheckCount,
+    totalChecksUsed
+  ) => {
     const state = get();
     const { originalBoard } = state;
 
@@ -230,10 +323,12 @@ export const useGameStore = create((set, get) => ({
 
     set({
       board: newBoard,
-      hasChecked: true,
       winner: gameOver ? winner : null,
       winningStones: winningStones || [],
       gameOver: gameOver || false,
+      hostCheckCount: hostCheckCount || state.hostCheckCount,
+      guestCheckCount: guestCheckCount || state.guestCheckCount,
+      totalChecksUsed: totalChecksUsed || state.totalChecksUsed,
     });
   },
 
@@ -256,7 +351,7 @@ export const useGameStore = create((set, get) => ({
 
     return {
       action: GAME_ACTIONS.PASS,
-      turnIndex: newTurnIndex, // ✅ 추가
+      turnIndex: newTurnIndex,
       timestamp: Date.now(),
     };
   },
@@ -282,18 +377,21 @@ export const useGameStore = create((set, get) => ({
           board: newBoard,
           originalBoard: newOriginalBoard,
           hasPlacedStone: true,
-          turnIndex: turnIndex || state.turnIndex, // ✅ turnIndex 동기화
+          turnIndex: turnIndex || state.turnIndex,
         });
         break;
 
       case GAME_ACTIONS.CHECK:
         // 상대방이 체크함
-        if (actionData.checkResults) {
+        if (actionData.checkResults !== undefined) {
           get().applyCheckResults(
             actionData.checkResults,
             actionData.winner,
             actionData.winningStones,
-            actionData.gameOver
+            actionData.gameOver,
+            actionData.hostCheckCount,
+            actionData.guestCheckCount,
+            actionData.totalChecksUsed
           );
         }
         break;
@@ -307,7 +405,7 @@ export const useGameStore = create((set, get) => ({
 
         set({
           board: currentState.originalBoard.map((row) => [...row]),
-          turnIndex: passedTurnIndex, // ✅ turnIndex 동기화
+          turnIndex: passedTurnIndex,
           hasPlacedStone: false,
           hasChecked: false,
           winningStones: [],
@@ -317,7 +415,6 @@ export const useGameStore = create((set, get) => ({
       case GAME_ACTIONS.RESET_GAME:
         // 상대방이 리셋함 - 나도 리셋
         get().resetGame();
-        console.log('상대방이 게임을 리셋했습니다');
         break;
     }
   },
@@ -340,6 +437,26 @@ export const useGameStore = create((set, get) => ({
     }
   },
 
+  // 내 남은 체크 횟수 가져오기
+  getMyRemainingChecks: () => {
+    const state = get();
+    return state.playerRole === 'host'
+      ? state.hostCheckCount
+      : state.guestCheckCount;
+  },
+
+  // 체크 가능 여부 확인
+  canCheck: () => {
+    const state = get();
+    if (state.gameOver || state.hasChecked) return false;
+
+    const myCheckCount =
+      state.playerRole === 'host'
+        ? state.hostCheckCount
+        : state.guestCheckCount;
+    return myCheckCount > 0;
+  },
+
   // 게임 상태 내보내기
   getGameState: () => {
     const state = get();
@@ -352,6 +469,9 @@ export const useGameStore = create((set, get) => ({
       hasPlacedStone: state.hasPlacedStone,
       hasChecked: state.hasChecked,
       winningStones: state.winningStones,
+      hostCheckCount: state.hostCheckCount,
+      guestCheckCount: state.guestCheckCount,
+      totalChecksUsed: state.totalChecksUsed,
     };
   },
 }));
@@ -470,4 +590,6 @@ export {
   WHITE_CONFIRMED,
   TURN_SEQUENCE,
   GAME_ACTIONS,
+  MAX_CHECKS_PER_PLAYER,
+  TOTAL_MAX_CHECKS,
 };

@@ -43,55 +43,33 @@ const OmokGame = () => {
     isMyTurn,
     processReceivedAction,
     setConnectionState,
+    getMyRemainingChecks,
+    canCheck,
   } = useGameStore();
 
   // 호버 상태 (로컬에서만 관리)
   const [hoveredCell, setHoveredCell] = React.useState(null);
-
-  // Firestore 구독 해제 함수
-  const [unsubscribeRoom, setUnsubscribeRoom] = React.useState(null);
 
   // 컴포넌트 마운트 시 플레이어 정보 설정
   useEffect(() => {
     if (location.state) {
       const { myNickname, opponentNickname, playerRole } = location.state;
       setPlayerInfo(myNickname, playerRole, roomId, opponentNickname);
-      console.log('플레이어 정보 설정:', {
-        myNickname,
-        opponentNickname,
-        playerRole,
-        roomId,
-      });
     }
   }, [location.state, roomId, setPlayerInfo]);
 
   // 방 구독 시작
   useEffect(() => {
-    console.log('=== 구독 useEffect 실행 ===');
-    console.log('roomId:', roomId);
-    console.log('playerRole:', playerRole);
-    console.log('unsubscribeRoom 존재:', !!unsubscribeRoom);
+    let unsubscribe = null;
 
-    if (roomId && !unsubscribeRoom && playerRole) {
-      console.log('🔥 새로운 구독 시작:', roomId);
-
-      const unsubscribe = subscribeToRoom(
-        roomId,
-        handleRoomUpdate,
-        handleRoomError
-      );
-
-      setUnsubscribeRoom(() => unsubscribe);
+    if (roomId && playerRole) {
+      unsubscribe = subscribeToRoom(roomId, handleRoomUpdate, handleRoomError);
       setConnectionState(true);
-      console.log('✅ 구독 설정 완료');
-    } else {
-      console.log('❌ 구독 조건 불만족');
     }
 
     return () => {
-      if (unsubscribeRoom) {
-        console.log('🛑 구독 해제');
-        unsubscribeRoom();
+      if (unsubscribe) {
+        unsubscribe();
         setConnectionState(false);
       }
     };
@@ -99,24 +77,13 @@ const OmokGame = () => {
 
   // 방 업데이트 처리
   const handleRoomUpdate = (roomData) => {
-    console.log('=== 방 업데이트 수신 ===');
-    console.log('currentAction:', roomData.currentAction);
-
     // 상대방의 게임 액션 처리
     if (roomData.currentAction) {
       const action = roomData.currentAction;
-      console.log('액션 타입:', action.action);
-      console.log('보낸 사람:', action.sender);
-      console.log('내 역할:', playerRole);
-      console.log('조건 체크:', action.sender, '!==', playerRole);
-      console.log('조건 결과:', action.sender !== playerRole);
 
       // 내가 보낸 액션은 무시 (중복 처리 방지)
       if (action.sender !== playerRole) {
-        console.log('💡 상대방 액션이므로 처리합니다');
         processReceivedAction(action);
-      } else {
-        console.log('⚠️ 내가 보낸 액션이므로 무시합니다');
       }
     }
   };
@@ -135,13 +102,14 @@ const OmokGame = () => {
 
   const currentTurn = getCurrentTurn();
   const isCurrentlyMyTurn = isMyTurn();
+  const remainingChecks = getMyRemainingChecks();
 
   const playSound = (soundFile) => {
     try {
       const audio = new Audio(`/sounds/${soundFile}`);
-      audio.play().catch((err) => console.log('Sound play failed:', err));
+      audio.play().catch(() => {});
     } catch (error) {
-      console.log('Sound error:', error);
+      // 사운드 오류는 조용히 무시
     }
   };
 
@@ -214,7 +182,6 @@ const OmokGame = () => {
     (row, col) => {
       // 내 턴이 아니면 무시
       if (!isCurrentlyMyTurn) {
-        console.log('내 턴이 아닙니다');
         return;
       }
 
@@ -231,7 +198,6 @@ const OmokGame = () => {
           sender: playerRole,
         };
 
-        console.log('돌 놓기 액션 전송:', actionWithSender);
         sendGameAction(roomId, actionWithSender);
       }
     },
@@ -249,11 +215,10 @@ const OmokGame = () => {
   // 체크 기능
   const handleCheck = () => {
     if (!isCurrentlyMyTurn) {
-      console.log('내 턴이 아닙니다');
       return;
     }
 
-    if (gameOver || hasChecked) return;
+    if (gameOver || hasChecked || !canCheck()) return;
 
     playSound('check.mp3');
 
@@ -266,7 +231,6 @@ const OmokGame = () => {
         sender: playerRole,
       };
 
-      console.log('체크 액션 전송:', actionWithSender);
       sendGameAction(roomId, actionWithSender);
     }
   };
@@ -274,7 +238,6 @@ const OmokGame = () => {
   // 넘어가기
   const handlePass = () => {
     if (!isCurrentlyMyTurn) {
-      console.log('내 턴이 아닙니다');
       return;
     }
 
@@ -287,7 +250,6 @@ const OmokGame = () => {
         sender: playerRole,
       };
 
-      console.log('넘어가기 액션 전송:', actionWithSender);
       sendGameAction(roomId, actionWithSender);
     }
   };
@@ -303,13 +265,25 @@ const OmokGame = () => {
       sender: playerRole,
     };
 
-    console.log('리셋 액션 전송:', actionData);
     sendGameAction(roomId, actionData);
   };
 
   // 현재 플레이어 정보 표시용
   const getCurrentPlayerDisplay = () => {
     if (currentTurn.player === 'black') {
+      return playerRole === 'host' ? myNickname : opponentNickname;
+    } else {
+      return playerRole === 'guest' ? myNickname : opponentNickname;
+    }
+  };
+
+  // 승리자 표시용
+  const getWinnerDisplay = () => {
+    if (winner === 'draw') {
+      return '무승부!';
+    }
+
+    if (winner === 'black') {
       return playerRole === 'host' ? myNickname : opponentNickname;
     } else {
       return playerRole === 'guest' ? myNickname : opponentNickname;
@@ -388,17 +362,16 @@ const OmokGame = () => {
           // 게임 종료 시: 승리자 + 리셋 버튼
           <>
             <div className="winner-info">
-              🎉 {winner === 'black' ? '⚫ 흑돌' : '⚪ 백돌'} 승리! 🎉
+              {winner === 'draw' ? (
+                '🤝 무승부!'
+              ) : (
+                <>🎉 {winner === 'black' ? '⚫ 흑돌' : '⚪ 백돌'} 승리! 🎉</>
+              )}
             </div>
             <div className="winner-name">
-              {winner === 'black'
-                ? playerRole === 'host'
-                  ? myNickname
-                  : opponentNickname
-                : playerRole === 'guest'
-                  ? myNickname
-                  : opponentNickname}{' '}
-              승리!
+              {winner === 'draw'
+                ? '모든 체크 기회를 사용했습니다'
+                : `${getWinnerDisplay()} 승리!`}
             </div>
             <div className="btn-container">
               <div className="btn check-btn" onClick={handleResetGame}>
@@ -420,10 +393,12 @@ const OmokGame = () => {
             {hasPlacedStone && isCurrentlyMyTurn && (
               <div className="btn-container">
                 <div
-                  className={`btn check-btn ${hasChecked ? 'disabled' : ''}`}
-                  onClick={hasChecked ? undefined : handleCheck}
+                  className={`btn check-btn ${
+                    hasChecked || !canCheck() ? 'disabled' : ''
+                  } ${remainingChecks === 0 ? 'no-checks' : ''}`}
+                  onClick={hasChecked || !canCheck() ? undefined : handleCheck}
                 >
-                  체크!
+                  체크! ({remainingChecks}/4)
                 </div>
                 <div className="btn pass-btn" onClick={handlePass}>
                   넘어가기!
@@ -442,18 +417,6 @@ const OmokGame = () => {
         {board.map((row, rowIndex) =>
           row.map((_, colIndex) => renderCell(rowIndex, colIndex))
         )}
-      </div>
-
-      {/* 디버깅용 정보 */}
-      <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
-        <div>
-          내 역할: {playerRole} | 내 닉네임: {myNickname} | 상대방:{' '}
-          {opponentNickname}
-        </div>
-        <div>
-          현재 턴: {currentTurn.player} | 내 턴:{' '}
-          {isCurrentlyMyTurn ? 'Yes' : 'No'}
-        </div>
       </div>
     </div>
   );

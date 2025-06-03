@@ -162,8 +162,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 120px;
-  height: 42px;
+  padding: 6px 10px;
   border-radius: 5px;
   font-weight: bold;
   cursor: pointer;

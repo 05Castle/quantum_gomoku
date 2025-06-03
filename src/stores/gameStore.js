@@ -323,12 +323,16 @@ export const useGameStore = create((set, get) => ({
 
     set({
       board: newBoard,
+      hasChecked: true, // 추가: 상대방이 체크했음을 표시
       winner: gameOver ? winner : null,
       winningStones: winningStones || [],
       gameOver: gameOver || false,
-      hostCheckCount: hostCheckCount || state.hostCheckCount,
-      guestCheckCount: guestCheckCount || state.guestCheckCount,
-      totalChecksUsed: totalChecksUsed || state.totalChecksUsed,
+      hostCheckCount:
+        hostCheckCount !== undefined ? hostCheckCount : state.hostCheckCount,
+      guestCheckCount:
+        guestCheckCount !== undefined ? guestCheckCount : state.guestCheckCount,
+      totalChecksUsed:
+        totalChecksUsed !== undefined ? totalChecksUsed : state.totalChecksUsed,
     });
   },
 
@@ -382,7 +386,7 @@ export const useGameStore = create((set, get) => ({
         break;
 
       case GAME_ACTIONS.CHECK:
-        // 상대방이 체크함
+        // 상대방이 체크함 - 체크 결과 적용
         if (actionData.checkResults !== undefined) {
           get().applyCheckResults(
             actionData.checkResults,
@@ -393,6 +397,24 @@ export const useGameStore = create((set, get) => ({
             actionData.guestCheckCount,
             actionData.totalChecksUsed
           );
+        } else {
+          // 체크 결과가 없어도 hasChecked와 체크 횟수는 업데이트
+          const currentState = get();
+          set({
+            hasChecked: true,
+            hostCheckCount:
+              actionData.hostCheckCount !== undefined
+                ? actionData.hostCheckCount
+                : currentState.hostCheckCount,
+            guestCheckCount:
+              actionData.guestCheckCount !== undefined
+                ? actionData.guestCheckCount
+                : currentState.guestCheckCount,
+            totalChecksUsed:
+              actionData.totalChecksUsed !== undefined
+                ? actionData.totalChecksUsed
+                : currentState.totalChecksUsed,
+          });
         }
         break;
 
@@ -445,16 +467,29 @@ export const useGameStore = create((set, get) => ({
       : state.guestCheckCount;
   },
 
-  // 체크 가능 여부 확인
+  // 체크 가능 여부 확인 (수정된 버전)
   canCheck: () => {
     const state = get();
-    if (state.gameOver || state.hasChecked) return false;
 
+    // 게임이 끝났으면 체크 불가
+    if (state.gameOver) return false;
+
+    // 내 체크 횟수 확인
     const myCheckCount =
       state.playerRole === 'host'
         ? state.hostCheckCount
         : state.guestCheckCount;
-    return myCheckCount > 0;
+
+    // 체크 횟수가 0 이하면 절대 불가
+    if (myCheckCount <= 0) return false;
+
+    // 내 턴이 아니면 체크 불가
+    if (!state.isMyTurn()) return false;
+
+    // 이미 이번 턴에 체크했으면 불가
+    if (state.hasChecked) return false;
+
+    return true;
   },
 
   // 게임 상태 내보내기

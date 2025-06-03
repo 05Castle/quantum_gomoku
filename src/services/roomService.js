@@ -156,6 +156,20 @@ export const sendGameAction = async (roomId, actionData) => {
       return { success: false, error: '게임이 진행 중이 아닙니다.' };
     }
 
+    // 체크 액션의 경우 추가 검증
+    if (actionData.action === 'check') {
+      const senderRole = actionData.sender;
+      const currentCheckCount =
+        senderRole === 'host'
+          ? roomData.hostCheckCount
+          : roomData.guestCheckCount;
+
+      // 서버에서도 체크 횟수 검증
+      if (currentCheckCount <= 0) {
+        return { success: false, error: '체크 횟수가 부족합니다.' };
+      }
+    }
+
     // 액션 데이터 업데이트
     const updateData = {
       currentAction: {
@@ -169,17 +183,12 @@ export const sendGameAction = async (roomId, actionData) => {
       updateData.currentTurnIndex = actionData.turnIndex;
     }
 
-    // 체크 액션인 경우 체크 횟수 정보 동기화
+    // 체크 액션인 경우 체크 횟수 정보 동기화 (강제로 값 설정)
     if (actionData.action === 'check') {
-      if (actionData.hostCheckCount !== undefined) {
-        updateData.hostCheckCount = actionData.hostCheckCount;
-      }
-      if (actionData.guestCheckCount !== undefined) {
-        updateData.guestCheckCount = actionData.guestCheckCount;
-      }
-      if (actionData.totalChecksUsed !== undefined) {
-        updateData.totalChecksUsed = actionData.totalChecksUsed;
-      }
+      // 서버의 체크 횟수를 액션 데이터의 값으로 덮어쓰기
+      updateData.hostCheckCount = actionData.hostCheckCount;
+      updateData.guestCheckCount = actionData.guestCheckCount;
+      updateData.totalChecksUsed = actionData.totalChecksUsed;
     }
 
     // 리셋 액션인 경우 상태 및 체크 횟수 초기화

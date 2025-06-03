@@ -214,11 +214,7 @@ const OmokGame = () => {
 
   // 체크 기능
   const handleCheck = () => {
-    if (!isCurrentlyMyTurn) {
-      return;
-    }
-
-    if (gameOver || hasChecked || !canCheck()) return;
+    if (!canCheck()) return;
 
     playSound('check.mp3');
 
@@ -394,9 +390,9 @@ const OmokGame = () => {
               <div className="btn-container">
                 <div
                   className={`btn check-btn ${
-                    hasChecked || !canCheck() ? 'disabled' : ''
+                    !canCheck() ? 'disabled' : ''
                   } ${remainingChecks === 0 ? 'no-checks' : ''}`}
-                  onClick={hasChecked || !canCheck() ? undefined : handleCheck}
+                  onClick={canCheck() ? handleCheck : undefined}
                 >
                   체크! ({remainingChecks}/4)
                 </div>

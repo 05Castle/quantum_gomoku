@@ -38,11 +38,7 @@ const ConnectionStatus = () => {
         {isConnected ? '🟢 연결됨' : '🔴 연결 끊어짐'}
       </span>
       <span className="room-id">방 ID: {roomId}</span>
-      <button
-        className="btn back-btn"
-        onClick={handleLeaveGame}
-        style={{ fontSize: '12px', padding: '4px 8px' }}
-      >
+      <button className="btn back-btn" onClick={handleLeaveGame}>
         나가기
       </button>
     </div>

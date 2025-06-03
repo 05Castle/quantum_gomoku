@@ -10,6 +10,9 @@
 
 /* === 플레이어 정보 바 === */
 .player-info-bar {
+  right: 40px;
+  top: 10%;
+  position: fixed;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,7 +22,7 @@
   border-radius: 15px;
   margin-bottom: 20px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  min-width: 500px;
+  min-width: 400px;
 }
 
 .player-section {
@@ -40,7 +43,7 @@
   font-size: 1.1rem;
   font-weight: bold;
   background: rgba(255, 255, 255, 0.2);
-  padding: 5px 12px;
+  padding: 5px 6px;
   border-radius: 8px;
   min-width: 80px;
   text-align: center;
@@ -49,14 +52,14 @@
 .vs-divider {
   font-size: 1.2rem;
   font-weight: bold;
-  margin: 0 20px;
+  margin: 0 10px;
   opacity: 0.8;
 }
 
 .game-status {
   height: 42px;
   display: flex;
-  width: 40%;
+  width: calc(60px * 13);
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
@@ -106,15 +109,17 @@
 
 /* === 연결 상태 표시 === */
 .connection-status {
+  position: fixed;
+  right: 40px;
+  bottom: 4%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #f8f9fa;
   padding: 8px 15px;
   border-radius: 8px;
-  margin-bottom: 15px;
   font-size: 0.9rem;
-  min-width: 300px;
+  min-width: 400px;
   border: 1px solid #e9ecef;
 }
 
@@ -152,6 +157,11 @@
   font-weight: bold;
   border: 1px solid #dee2e6;
   letter-spacing: 1px;
+}
+
+.btn.back-btn {
+  font-size: 13px;
+  margin: 0;
 }
 
 .btn-container {
@@ -358,42 +368,15 @@
 }
 
 /* === 반응형 디자인 === */
-@media (max-width: 768px) {
+@media (max-width: 1750px) {
   .player-info-bar {
-    min-width: auto;
-    width: 90%;
-    padding: 12px 20px;
-  }
-
-  .player-name {
-    font-size: 1rem;
-    min-width: 60px;
-  }
-
-  .vs-divider {
-    margin: 0 15px;
+    position: relative;
+    width: 750px;
+    right: 0;
   }
 
   .connection-status {
-    min-width: auto;
-    width: 90%;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .game-status {
-    width: 90%;
-    flex-direction: column;
-    height: auto;
-    gap: 10px;
-  }
-
-  .btn {
-    width: 140px;
-    font-size: 0.9rem;
-  }
-
-  .check-btn {
-    margin-right: 10px;
+    position: relative;
+    right: 0;
   }
 }

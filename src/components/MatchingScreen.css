@@ -35,13 +35,17 @@
 
 /* 게임 제목 */
 .game-title {
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  margin: 0 0 30px 0;
+  margin: 0 0 5px 0;
   background: linear-gradient(135deg, #667eea, #764ba2);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.title-img {
+  margin-bottom: 45px;
 }
 
 /* 섹션 제목 */
@@ -55,6 +59,13 @@ h2 {
 /* 플레이어 정보 표시 */
 .player-info {
   margin-bottom: 20px;
+}
+
+.nickname-section p {
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 9px;
 }
 
 .nickname-display {

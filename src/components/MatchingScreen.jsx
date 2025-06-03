@@ -7,6 +7,7 @@ import {
   subscribeToRoom,
   leaveRoom,
 } from '../services/roomService';
+import title from '../assets/title.png';
 import './MatchingScreen.css';
 
 const MatchingScreen = () => {
@@ -278,12 +279,13 @@ const MatchingScreen = () => {
   return (
     <div className="matching-container">
       <div className="matching-card">
-        <h1 className="game-title">양자 오목</h1>
+        <h1 className="game-title">램램도 이길 수</h1>
+        <img className="title-img" src={title} alt="양자오목" />
 
         {/* 닉네임 입력 화면 */}
         {matchingState === 'nickname-input' && (
           <div className="nickname-section">
-            <h2>닉네임을 입력하세요</h2>
+            <p>닉네임을 입력하세요</p>
             <div className="input-group">
               <input
                 type="text"
@@ -310,8 +312,6 @@ const MatchingScreen = () => {
             <div className="player-info">
               <span className="nickname-display">👤 {myNickname}</span>
             </div>
-
-            <h2>게임 방식을 선택하세요</h2>
 
             <div className="button-group">
               <button

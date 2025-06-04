@@ -28,6 +28,10 @@ const GAME_ACTIONS = {
 const MAX_CHECKS_PER_PLAYER = 4;
 const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 2; // 8회
 
+// 캐릭터 상수 (Ver 1.2 추가)
+const TOTAL_CHARACTERS = 5; // c1 ~ c5
+const DEFAULT_CHARACTER = 0; // c1이 기본값
+
 // 빈 보드 생성 함수
 const createEmptyBoard = () =>
   Array(BOARD_SIZE)
@@ -41,6 +45,10 @@ export const useGameStore = create((set, get) => ({
   opponentNickname: '',
   playerRole: null, // 'host' | 'guest'
   roomId: '',
+
+  // === Ver 1.2: 캐릭터 정보 추가 ===
+  myCharacter: DEFAULT_CHARACTER, // 0~4 (c1~c5)
+  opponentCharacter: DEFAULT_CHARACTER,
 
   // === 게임 상태 ===
   board: createEmptyBoard(),
@@ -62,14 +70,30 @@ export const useGameStore = create((set, get) => ({
 
   // === 액션들 ===
 
-  // 플레이어 정보 설정
-  setPlayerInfo: (nickname, role, roomId, opponentNickname = '') =>
+  // Ver 1.2: 플레이어 정보 설정 (캐릭터 정보 포함)
+  setPlayerInfo: (
+    nickname,
+    role,
+    roomId,
+    opponentNickname = '',
+    myCharacter = DEFAULT_CHARACTER,
+    opponentCharacter = DEFAULT_CHARACTER
+  ) =>
     set({
       myNickname: nickname,
       playerRole: role,
       roomId: roomId,
       opponentNickname: opponentNickname,
+      myCharacter: myCharacter,
+      opponentCharacter: opponentCharacter,
     }),
+
+  // Ver 1.2: 내 캐릭터 변경
+  setMyCharacter: (characterIndex) => set({ myCharacter: characterIndex }),
+
+  // Ver 1.2: 상대방 캐릭터 설정
+  setOpponentCharacter: (characterIndex) =>
+    set({ opponentCharacter: characterIndex }),
 
   // 연결 상태 설정
   setConnectionState: (isConnected) => set({ isConnected }),
@@ -79,6 +103,39 @@ export const useGameStore = create((set, get) => ({
 
   // 상대방 닉네임 설정
   setOpponentNickname: (nickname) => set({ opponentNickname: nickname }),
+
+  // === Ver 1.2: 캐릭터 유틸리티 함수들 ===
+
+  // 다음 캐릭터로 변경
+  nextCharacter: () => {
+    const state = get();
+    const nextIndex = (state.myCharacter + 1) % TOTAL_CHARACTERS;
+    set({ myCharacter: nextIndex });
+  },
+
+  // 이전 캐릭터로 변경
+  prevCharacter: () => {
+    const state = get();
+    const prevIndex =
+      state.myCharacter === 0 ? TOTAL_CHARACTERS - 1 : state.myCharacter - 1;
+    set({ myCharacter: prevIndex });
+  },
+
+  // 캐릭터 이미지 경로 반환
+  getCharacterImage: (characterIndex) =>
+    `/characters/c${characterIndex + 1}.png`,
+
+  // 내 캐릭터 이미지 경로
+  getMyCharacterImage: () => {
+    const state = get();
+    return `/characters/c${state.myCharacter + 1}.png`;
+  },
+
+  // 상대방 캐릭터 이미지 경로
+  getOpponentCharacterImage: () => {
+    const state = get();
+    return `/characters/c${state.opponentCharacter + 1}.png`;
+  },
 
   // === 게임 로직 액션들 ===
 
@@ -98,13 +155,14 @@ export const useGameStore = create((set, get) => ({
       totalChecksUsed: 0,
     }),
 
-  // 방 나가기 (별명은 유지하되 매칭 상태만 삭제)
+  // 방 나가기 (별명과 캐릭터는 유지하되 매칭 상태만 삭제)
   exitRoom: () => {
     const state = get();
     set({
       // 연결 및 방 정보 완전 초기화
       isConnected: false,
       opponentNickname: '',
+      opponentCharacter: DEFAULT_CHARACTER, // Ver 1.2: 상대방 캐릭터 초기화
       playerRole: null,
       roomId: '',
 
@@ -126,7 +184,7 @@ export const useGameStore = create((set, get) => ({
       // 중요: 매칭 상태를 방 선택 단계로 되돌림
       matchingState: 'matching',
 
-      // myNickname만 유지
+      // myNickname과 myCharacter는 유지
     });
   },
 
@@ -636,7 +694,7 @@ const checkWin = (board, checker = null) => {
   return null;
 };
 
-// 상수들도 export
+// 상수들도 export (Ver 1.2: 캐릭터 상수 추가)
 export {
   BOARD_SIZE,
   EMPTY,
@@ -650,4 +708,6 @@ export {
   GAME_ACTIONS,
   MAX_CHECKS_PER_PLAYER,
   TOTAL_MAX_CHECKS,
+  TOTAL_CHARACTERS,
+  DEFAULT_CHARACTER,
 };

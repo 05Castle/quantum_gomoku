@@ -48,6 +48,94 @@
   margin-bottom: 45px;
 }
 
+/* === Ver 1.2: 캐릭터 선택 스타일 === */
+.character-selection {
+  margin-bottom: 25px;
+}
+
+.character-selection p {
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.character-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.character-display {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 3px solid #667eea;
+  overflow: hidden;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+  transition: all 0.3s ease;
+}
+
+.character-display:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.character-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.character-arrow {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.character-arrow:hover {
+  background: #667eea;
+  color: white;
+  transform: scale(1.1);
+}
+
+.character-arrow:active {
+  transform: scale(0.95);
+}
+
+/* === Ver 1.2: 플레이어 정보와 캐릭터 표시 === */
+.player-info-with-character {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.player-character-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #667eea;
+  object-fit: cover;
+}
+
 /* 섹션 제목 */
 h2 {
   font-size: 1.5rem;
@@ -356,6 +444,27 @@ input[type='text']:disabled {
     flex-direction: column;
     gap: 5px;
   }
+
+  /* Ver 1.2: 모바일에서 캐릭터 선택 조정 */
+  .character-selector {
+    gap: 15px;
+  }
+
+  .character-display {
+    width: 100px;
+    height: 100px;
+  }
+
+  .character-arrow {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .player-info-with-character {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 /* 애니메이션 효과 */
@@ -382,4 +491,25 @@ input[type='text']:disabled {
 
 input:focus-visible {
   outline: none;
+}
+
+/* Ver 1.2: 캐릭터 이미지 호버 효과 */
+.character-display:hover .character-image {
+  transform: scale(1.1);
+}
+
+/* Ver 1.2: 캐릭터 선택 애니메이션 */
+.character-display {
+  animation: characterAppear 0.3s ease-out;
+}
+
+@keyframes characterAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

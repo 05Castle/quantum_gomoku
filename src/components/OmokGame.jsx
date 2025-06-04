@@ -45,18 +45,42 @@ const OmokGame = () => {
     setConnectionState,
     getMyRemainingChecks,
     canCheck,
+    // Ver 1.2: 캐릭터 관련 함수 추가
+    setOpponentCharacter,
   } = useGameStore();
 
   // 호버 상태 (로컬에서만 관리)
   const [hoveredCell, setHoveredCell] = React.useState(null);
 
-  // 컴포넌트 마운트 시 플레이어 정보 설정
+  // Ver 1.2: 컴포넌트 마운트 시 플레이어 정보 설정 (캐릭터 정보 포함)
   useEffect(() => {
     if (location.state) {
-      const { myNickname, opponentNickname, playerRole } = location.state;
-      setPlayerInfo(myNickname, playerRole, roomId, opponentNickname);
+      const {
+        myNickname,
+        myCharacter,
+        opponentNickname,
+        opponentCharacter,
+        playerRole,
+      } = location.state;
+
+      console.log('OmokGame - location.state:', location.state);
+
+      // Ver 1.2: 캐릭터 정보도 함께 설정
+      setPlayerInfo(
+        myNickname,
+        playerRole,
+        roomId,
+        opponentNickname,
+        myCharacter || 0,
+        opponentCharacter || 0
+      );
+
+      // 상대방 캐릭터도 별도로 설정 (안전장치)
+      if (opponentCharacter !== undefined) {
+        setOpponentCharacter(opponentCharacter);
+      }
     }
-  }, [location.state, roomId, setPlayerInfo]);
+  }, [location.state, roomId, setPlayerInfo, setOpponentCharacter]);
 
   // 방 구독 시작
   useEffect(() => {
@@ -77,6 +101,19 @@ const OmokGame = () => {
 
   // 방 업데이트 처리
   const handleRoomUpdate = (roomData) => {
+    // Ver 1.2: 상대방 캐릭터 정보 업데이트
+    if (
+      roomData.hostCharacter !== undefined &&
+      roomData.guestCharacter !== undefined
+    ) {
+      const opponentCharacterIndex =
+        playerRole === 'host'
+          ? roomData.guestCharacter
+          : roomData.hostCharacter;
+
+      setOpponentCharacter(opponentCharacterIndex);
+    }
+
     // 상대방의 게임 액션 처리
     if (roomData.currentAction) {
       const action = roomData.currentAction;
@@ -394,7 +431,7 @@ const OmokGame = () => {
                   } ${remainingChecks === 0 ? 'no-checks' : ''}`}
                   onClick={canCheck() ? handleCheck : undefined}
                 >
-                  관측! ({remainingChecks}/4)
+                  체크! ({remainingChecks}/4)
                 </div>
                 <div className="btn pass-btn" onClick={handlePass}>
                   넘어가기!

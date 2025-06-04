@@ -19,11 +19,12 @@ const ROOM_STATUS = {
 // === 방 관리 함수들 ===
 
 /**
- * 새 방 생성
+ * Ver 1.2: 새 방 생성 (캐릭터 정보 포함)
  * @param {string} hostNickname - 호스트 닉네임
+ * @param {number} hostCharacter - 호스트 캐릭터 인덱스 (0~4)
  * @returns {object} - { success: boolean, roomId: string, error?: string }
  */
-export const createRoom = async (hostNickname) => {
+export const createRoom = async (hostNickname, hostCharacter = 0) => {
   try {
     // 고유한 방 ID 생성 (중복 체크)
     let roomId;
@@ -39,11 +40,13 @@ export const createRoom = async (hostNickname) => {
       }
     } while (await documentExists('rooms', roomId));
 
-    // 방 데이터 구조
+    // 방 데이터 구조 (Ver 1.2: 캐릭터 정보 추가)
     const roomData = {
       // 기본 방 정보
       hostNickname: hostNickname,
+      hostCharacter: hostCharacter, // Ver 1.2: 호스트 캐릭터
       guestNickname: null,
+      guestCharacter: 0, // Ver 1.2: 게스트 캐릭터 (기본값)
       hostConnected: true,
       guestConnected: false,
 
@@ -75,12 +78,13 @@ export const createRoom = async (hostNickname) => {
 };
 
 /**
- * 방 참가
+ * Ver 1.2: 방 참가 (캐릭터 정보 포함)
  * @param {string} roomId - 방 ID
  * @param {string} guestNickname - 게스트 닉네임
+ * @param {number} guestCharacter - 게스트 캐릭터 인덱스 (0~4)
  * @returns {object} - { success: boolean, roomData?: object, error?: string }
  */
-export const joinRoom = async (roomId, guestNickname) => {
+export const joinRoom = async (roomId, guestNickname, guestCharacter = 0) => {
   try {
     // 방 존재 여부 확인
     const roomData = await getDocument('rooms', roomId);
@@ -113,9 +117,10 @@ export const joinRoom = async (roomId, guestNickname) => {
       };
     }
 
-    // 게스트 추가
+    // Ver 1.2: 게스트 추가 (캐릭터 정보 포함)
     const updateData = {
       guestNickname: guestNickname,
+      guestCharacter: guestCharacter,
       guestConnected: true,
       currentPlayerCount: 2,
       status: ROOM_STATUS.PLAYING,
@@ -243,7 +248,7 @@ export const subscribeToRoom = (roomId, onRoomUpdate, onError) => {
 };
 
 /**
- * 방 나가기
+ * Ver 1.2: 방 나가기 (캐릭터 정보 초기화 포함)
  * @param {string} roomId - 방 ID
  * @param {string} playerRole - 플레이어 역할 ('host' | 'guest')
  * @returns {object} - { success: boolean, error?: string }
@@ -260,9 +265,10 @@ export const leaveRoom = async (roomId, playerRole) => {
       // 호스트가 나가면 방 삭제
       await deleteDocument('rooms', roomId);
     } else {
-      // 게스트가 나가면 대기 상태로 복원
+      // Ver 1.2: 게스트가 나가면 대기 상태로 복원 (캐릭터 정보도 초기화)
       const updateData = {
         guestNickname: null,
+        guestCharacter: 0, // Ver 1.2: 게스트 캐릭터 초기화
         guestConnected: false,
         currentPlayerCount: 1,
         status: ROOM_STATUS.WAITING,

@@ -17,13 +17,20 @@ const MatchingScreen = () => {
   const {
     matchingState,
     myNickname,
+    myCharacter,
     opponentNickname,
     playerRole,
     roomId,
     setPlayerInfo,
     setMatchingState,
     setOpponentNickname,
+    setOpponentCharacter,
     resetGame,
+    // Ver 1.2: 캐릭터 관련 함수들
+    setMyCharacter,
+    nextCharacter,
+    prevCharacter,
+    getCharacterImage,
   } = useGameStore();
 
   // 로컬 상태들 (UI 전용)
@@ -53,8 +60,8 @@ const MatchingScreen = () => {
       return;
     }
 
-    // Zustand에 닉네임 저장
-    setPlayerInfo(inputNickname, null, '', '');
+    // Zustand에 닉네임 저장 (캐릭터는 이미 선택되어 있음)
+    setPlayerInfo(inputNickname, null, '', '', myCharacter);
     setErrorMessage('');
     setMatchingState('matching');
   };
@@ -74,7 +81,7 @@ const MatchingScreen = () => {
     setErrorMessage('');
 
     try {
-      const result = await createRoom(myNickname);
+      const result = await createRoom(myNickname, myCharacter); // Ver 1.2: 캐릭터 정보 포함
 
       if (result.success) {
         // 로컬 상태에 즉시 저장
@@ -82,7 +89,7 @@ const MatchingScreen = () => {
         setCurrentPlayerRole('host');
 
         // Zustand에 방 정보 저장
-        setPlayerInfo(myNickname, 'host', result.roomId, '');
+        setPlayerInfo(myNickname, 'host', result.roomId, '', myCharacter);
         setMatchingState('waiting');
 
         // 방 구독 시작
@@ -117,20 +124,23 @@ const MatchingScreen = () => {
 
     try {
       const roomIdUpper = inputRoomId.toUpperCase();
-      const result = await joinRoom(roomIdUpper, myNickname);
+      const result = await joinRoom(roomIdUpper, myNickname, myCharacter); // Ver 1.2: 캐릭터 정보 포함
 
       if (result.success) {
         // 로컬 상태에 즉시 저장
         setCurrentRoomId(roomIdUpper);
         setCurrentPlayerRole('guest');
 
-        // Zustand에 방 정보 저장
+        // Zustand에 방 정보 저장 (Ver 1.2: 호스트 캐릭터 정보도 설정)
         setPlayerInfo(
           myNickname,
           'guest',
           roomIdUpper,
-          result.roomData.hostNickname
+          result.roomData.hostNickname,
+          myCharacter,
+          result.roomData.hostCharacter
         );
+        setOpponentCharacter(result.roomData.hostCharacter);
         setMatchingState('connecting');
 
         // 방 구독 시작
@@ -145,7 +155,12 @@ const MatchingScreen = () => {
 
         // 게임이 바로 시작되므로 게임 화면으로 이동
         setTimeout(() => {
-          startGame(result.roomData.hostNickname, roomIdUpper, 'guest');
+          startGame(
+            result.roomData.hostNickname,
+            roomIdUpper,
+            'guest',
+            result.roomData.hostCharacter
+          );
         }, 1000);
       } else {
         setErrorMessage(result.error);
@@ -171,7 +186,14 @@ const MatchingScreen = () => {
       roomData.status === 'playing'
     ) {
       console.log('게스트 참가됨:', roomData.guestNickname);
-      startGame(roomData.guestNickname, gameRoomId, gamePlayerRole);
+      // Ver 1.2: 게스트 캐릭터 정보도 전달
+      setOpponentCharacter(roomData.guestCharacter || 0);
+      startGame(
+        roomData.guestNickname,
+        gameRoomId,
+        gamePlayerRole,
+        roomData.guestCharacter
+      );
     }
 
     // 상대방이 나갔을 때
@@ -196,16 +218,23 @@ const MatchingScreen = () => {
     }
   };
 
-  // 게임 시작
-  const startGame = (opponentName, gameRoomId, gamePlayerRole) => {
+  // 게임 시작 (Ver 1.2: 상대방 캐릭터 정보 추가)
+  const startGame = (
+    opponentName,
+    gameRoomId,
+    gamePlayerRole,
+    opponentCharacterIndex = 0
+  ) => {
     console.log('=== 게임 시작 ===');
     console.log('opponentName:', opponentName);
     console.log('gameRoomId:', gameRoomId);
     console.log('gamePlayerRole:', gamePlayerRole);
+    console.log('opponentCharacter:', opponentCharacterIndex);
     console.log('navigate URL:', `/game/${gameRoomId}`);
 
-    // 상대방 닉네임 설정
+    // 상대방 닉네임과 캐릭터 설정
     setOpponentNickname(opponentName);
+    setOpponentCharacter(opponentCharacterIndex);
 
     // 게임 상태 초기화
     resetGame();
@@ -221,7 +250,9 @@ const MatchingScreen = () => {
     navigate(`/game/${gameRoomId}`, {
       state: {
         myNickname,
+        myCharacter,
         opponentNickname: opponentName,
+        opponentCharacter: opponentCharacterIndex,
         playerRole: gamePlayerRole,
         roomId: gameRoomId,
       },
@@ -285,6 +316,34 @@ const MatchingScreen = () => {
         {/* 닉네임 입력 화면 */}
         {matchingState === 'nickname-input' && (
           <div className="nickname-section">
+            {/* Ver 1.2: 캐릭터 선택 UI 추가 */}
+            <div className="character-selection">
+              <p>캐릭터를 선택하세요</p>
+              <div className="character-selector">
+                <button
+                  className="character-arrow left"
+                  onClick={prevCharacter}
+                  type="button"
+                >
+                  ◀
+                </button>
+                <div className="character-display">
+                  <img
+                    src={getCharacterImage(myCharacter)}
+                    alt={`캐릭터 ${myCharacter + 1}`}
+                    className="character-image"
+                  />
+                </div>
+                <button
+                  className="character-arrow right"
+                  onClick={nextCharacter}
+                  type="button"
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
+
             <p>닉네임을 입력하세요</p>
             <div className="input-group">
               <input
@@ -310,7 +369,14 @@ const MatchingScreen = () => {
         {matchingState === 'matching' && (
           <div className="matching-section">
             <div className="player-info">
-              <span className="nickname-display">👤 {myNickname}</span>
+              <div className="player-info-with-character">
+                <img
+                  src={getCharacterImage(myCharacter)}
+                  alt="내 캐릭터"
+                  className="player-character-small"
+                />
+                <span className="nickname-display">👤 {myNickname}</span>
+              </div>
             </div>
 
             <div className="button-group">
@@ -351,7 +417,14 @@ const MatchingScreen = () => {
         {matchingState === 'waiting' && (
           <div className="waiting-section">
             <div className="player-info">
-              <span className="nickname-display">👤 {myNickname} (방장)</span>
+              <div className="player-info-with-character">
+                <img
+                  src={getCharacterImage(myCharacter)}
+                  alt="내 캐릭터"
+                  className="player-character-small"
+                />
+                <span className="nickname-display">👤 {myNickname} (방장)</span>
+              </div>
             </div>
 
             <h2>친구를 기다리는 중...</h2>
@@ -388,7 +461,14 @@ const MatchingScreen = () => {
         {matchingState === 'connecting' && (
           <div className="connecting-section">
             <div className="player-info">
-              <span className="nickname-display">👤 {myNickname}</span>
+              <div className="player-info-with-character">
+                <img
+                  src={getCharacterImage(myCharacter)}
+                  alt="내 캐릭터"
+                  className="player-character-small"
+                />
+                <span className="nickname-display">👤 {myNickname}</span>
+              </div>
             </div>
 
             <h2>게임에 접속 중...</h2>
@@ -425,6 +505,7 @@ const MatchingScreen = () => {
           <div>매칭 상태: {matchingState}</div>
           <div>플레이어 역할: {playerRole || '없음'}</div>
           <div>방 ID: {roomId || '없음'}</div>
+          <div>선택 캐릭터: C{myCharacter + 1}</div>
         </div>
       </div>
     </div>

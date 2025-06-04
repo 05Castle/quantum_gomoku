@@ -99,6 +99,16 @@ const OmokGame = () => {
     };
   }, [roomId, playerRole]);
 
+  // 사운드 재생 함수
+  const playSound = (soundFile) => {
+    try {
+      const audio = new Audio(`/sounds/${soundFile}`);
+      audio.play().catch(() => {});
+    } catch (error) {
+      // 사운드 오류는 조용히 무시
+    }
+  };
+
   // 방 업데이트 처리
   const handleRoomUpdate = (roomData) => {
     // Ver 1.2: 상대방 캐릭터 정보 업데이트
@@ -140,15 +150,6 @@ const OmokGame = () => {
   const currentTurn = getCurrentTurn();
   const isCurrentlyMyTurn = isMyTurn();
   const remainingChecks = getMyRemainingChecks();
-
-  const playSound = (soundFile) => {
-    try {
-      const audio = new Audio(`/sounds/${soundFile}`);
-      audio.play().catch(() => {});
-    } catch (error) {
-      // 사운드 오류는 조용히 무시
-    }
-  };
 
   // 돌 타입을 셀 값으로 변환
   const getStoneValue = (player, type) => {

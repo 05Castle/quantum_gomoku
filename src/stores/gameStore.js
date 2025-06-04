@@ -32,6 +32,18 @@ const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 2; // 8회
 const TOTAL_CHARACTERS = 5; // c1 ~ c5
 const DEFAULT_CHARACTER = 0; // c1이 기본값
 
+// Ver 1.21: 사운드 재생 함수 (글로벌)
+const playSound = (soundFile) => {
+  try {
+    const audio = new Audio(`/sounds/${soundFile}`);
+    audio.play().catch(() => {
+      // 사운드 오류는 조용히 무시
+    });
+  } catch (error) {
+    // 사운드 오류는 조용히 무시
+  }
+};
+
 // 빈 보드 생성 함수
 const createEmptyBoard = () =>
   Array(BOARD_SIZE)
@@ -304,12 +316,7 @@ export const useGameStore = create((set, get) => ({
         });
 
         // 승리 사운드
-        try {
-          const audio = new Audio('/sounds/win.mp3');
-          audio.play().catch((err) => console.log('Win sound failed:', err));
-        } catch (error) {
-          console.log('Win sound error:', error);
-        }
+        playSound('win.mp3');
       } else {
         // 승리 조건 없음 - 무승부 체크
         const shouldCheckDraw = newTotalChecksUsed >= TOTAL_MAX_CHECKS;
@@ -439,7 +446,7 @@ export const useGameStore = create((set, get) => ({
     };
   },
 
-  // 외부에서 받은 액션 처리
+  // Ver 1.21: 외부에서 받은 액션 처리 (SFX 동기화 추가)
   processReceivedAction: (actionData) => {
     const { action } = actionData;
 
@@ -462,6 +469,9 @@ export const useGameStore = create((set, get) => ({
           hasPlacedStone: true,
           turnIndex: turnIndex || state.turnIndex,
         });
+
+        // Ver 1.21: 돌 놓기 사운드 재생
+        playSound('place.mp3');
         break;
 
       case GAME_ACTIONS.CHECK:
@@ -476,6 +486,18 @@ export const useGameStore = create((set, get) => ({
             actionData.guestCheckCount,
             actionData.totalChecksUsed
           );
+
+          // Ver 1.21: 체크 사운드 재생
+          playSound('check.mp3');
+
+          // Ver 1.21: 승리 시 승리 사운드 재생
+          if (
+            actionData.gameOver &&
+            actionData.winner &&
+            actionData.winner !== 'draw'
+          ) {
+            playSound('win.mp3');
+          }
         } else {
           // 체크 결과가 없어도 hasChecked와 체크 횟수는 업데이트
           const currentState = get();
@@ -494,6 +516,9 @@ export const useGameStore = create((set, get) => ({
                 ? actionData.totalChecksUsed
                 : currentState.totalChecksUsed,
           });
+
+          // Ver 1.21: 체크 사운드 재생 (결과가 없어도)
+          playSound('check.mp3');
         }
         break;
 
@@ -516,6 +541,9 @@ export const useGameStore = create((set, get) => ({
       case GAME_ACTIONS.RESET_GAME:
         // 상대방이 리셋함 - 나도 리셋
         get().resetGame();
+
+        // Ver 1.21: 게임 시작 사운드 재생
+        playSound('start.mp3');
         break;
     }
   },

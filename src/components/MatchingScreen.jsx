@@ -310,7 +310,7 @@ const MatchingScreen = () => {
   return (
     <div className="matching-container">
       <div className="matching-card">
-        <h1 className="game-title">램램도 이길 수</h1>
+        <h1 className="game-title">램램도 이길 수 있다!</h1>
         <img className="title-img" src={title} alt="양자오목" />
 
         {/* 닉네임 입력 화면 */}

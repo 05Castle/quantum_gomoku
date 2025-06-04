@@ -222,46 +222,35 @@ export const useGameStore = create((set, get) => ({
         playerRole === 'guest' ? guestCheckCount - 1 : guestCheckCount;
       const newTotalChecksUsed = totalChecksUsed + 1;
 
-      // 승리 체크
-      const winResult = checkWin(newBoard);
+      // 승리 체크 (Ver 1.1: 체크한 플레이어 정보 전달)
+      const checkerPlayer = playerRole === 'host' ? 'black' : 'white';
+      const winResult = checkWin(newBoard, checkerPlayer);
       let winner = null;
       let winningStones = [];
       let gameOver = false;
 
       if (winResult) {
-        if (winResult.isDraw) {
-          // 무승부 - 게임 계속, 돌들만 강조
-          set({
-            board: newBoard,
-            hasChecked: true,
-            winningStones: winResult.stones,
-            hostCheckCount: newHostCheckCount,
-            guestCheckCount: newGuestCheckCount,
-            totalChecksUsed: newTotalChecksUsed,
-          });
-        } else {
-          // 일반 승리
-          winner = winResult.player;
-          winningStones = winResult.stones;
-          gameOver = true;
-          set({
-            board: newBoard,
-            hasChecked: true,
-            winner,
-            winningStones,
-            gameOver,
-            hostCheckCount: newHostCheckCount,
-            guestCheckCount: newGuestCheckCount,
-            totalChecksUsed: newTotalChecksUsed,
-          });
+        // Ver 1.1: isDraw 로직 완전 제거 - 이제 체크한 플레이어가 항상 우선 승리
+        winner = winResult.player;
+        winningStones = winResult.stones;
+        gameOver = true;
+        set({
+          board: newBoard,
+          hasChecked: true,
+          winner,
+          winningStones,
+          gameOver,
+          hostCheckCount: newHostCheckCount,
+          guestCheckCount: newGuestCheckCount,
+          totalChecksUsed: newTotalChecksUsed,
+        });
 
-          // 승리 사운드
-          try {
-            const audio = new Audio('/sounds/win.mp3');
-            audio.play().catch((err) => console.log('Win sound failed:', err));
-          } catch (error) {
-            console.log('Win sound error:', error);
-          }
+        // 승리 사운드
+        try {
+          const audio = new Audio('/sounds/win.mp3');
+          audio.play().catch((err) => console.log('Win sound failed:', err));
+        } catch (error) {
+          console.log('Win sound error:', error);
         }
       } else {
         // 승리 조건 없음 - 무승부 체크
@@ -574,8 +563,8 @@ const getStoneInfo = (cellValue) => {
   }
 };
 
-// 승리 체크 함수
-const checkWin = (board) => {
+// Ver 1.1: 승리 체크 함수 - 체크한 플레이어 우선 승리 로직 적용
+const checkWin = (board, checker = null) => {
   const directions = [
     [0, 1],
     [1, 0],
@@ -626,13 +615,15 @@ const checkWin = (board) => {
     }
   }
 
-  // 양쪽 모두 5목 달성 시 무승부
+  // Ver 1.1: 양쪽 모두 5목 달성 시 체크한 플레이어 우선 승리
   if (blackWins.length > 0 && whiteWins.length > 0) {
-    const allWinningStones = [
-      ...blackWins.flatMap((win) => win.stones),
-      ...whiteWins.flatMap((win) => win.stones),
-    ];
-    return { player: null, stones: allWinningStones, isDraw: true };
+    if (checker === 'black') {
+      return blackWins[0]; // 흑이 체크했으면 흑 승리
+    } else if (checker === 'white') {
+      return whiteWins[0]; // 백이 체크했으면 백 승리
+    }
+    // 체크 정보가 없으면 (이론적으로 발생하지 않음) 흑 우선
+    return blackWins[0];
   }
 
   if (blackWins.length > 0) {

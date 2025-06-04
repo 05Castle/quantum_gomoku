@@ -394,7 +394,7 @@ const OmokGame = () => {
                   } ${remainingChecks === 0 ? 'no-checks' : ''}`}
                   onClick={canCheck() ? handleCheck : undefined}
                 >
-                  체크! ({remainingChecks}/4)
+                  관측! ({remainingChecks}/4)
                 </div>
                 <div className="btn pass-btn" onClick={handlePass}>
                   넘어가기!

@@ -29,7 +29,7 @@ const MAX_CHECKS_PER_PLAYER = 4;
 const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 2; // 8회
 
 // 캐릭터 상수 (Ver 1.2 추가)
-const TOTAL_CHARACTERS = 5; // c1 ~ c5
+const TOTAL_CHARACTERS = 6; // c1 ~ c5
 const DEFAULT_CHARACTER = 0; // c1이 기본값
 
 // Ver 1.21: 사운드 재생 함수 (글로벌)

@@ -12,6 +12,7 @@ import {
 } from '../stores/gameStore';
 import PlayerInfoBar from './PlayerInfoBar';
 import ConnectionStatus from './ConnectionStatus';
+import ChatBox from './ChatBox';
 import './OmokGame.css';
 
 const OmokGame = () => {
@@ -380,6 +381,7 @@ const OmokGame = () => {
   return (
     <div className="game-container">
       <PlayerInfoBar />
+      <ChatBox roomId={roomId} myNickname={myNickname} />
       <ConnectionStatus opponentLeft={opponentLeft} />
 
       {/* 상단 상태 표시 */}

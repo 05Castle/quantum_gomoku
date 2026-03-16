@@ -135,10 +135,8 @@ const OmokGame3P = () => {
   };
 
   const handleRoomUpdate = (roomData) => {
-    // 플레이어 정보 업데이트
     updatePlayersFromRoom(roomData);
 
-    // 상대방 나감 감지 (호스트가 나가면 방 삭제됨)
     if (playerRole !== 'host') {
       if (roomData.currentPlayerCount < 3 && roomData.status !== 'playing') {
         setOpponentLeft(true);
@@ -146,10 +144,10 @@ const OmokGame3P = () => {
       }
     }
 
-    // actions 맵에서 내가 아직 처리 안 한 액션 처리
     if (roomData.actions) {
+      const currentPlayerRole = useGameStore3P.getState().playerRole; // 클로저 문제 해결
       Object.entries(roomData.actions).forEach(([key, actionData]) => {
-        if (actionData.sender !== playerRole) {
+        if (actionData.sender !== currentPlayerRole) {
           processReceivedAction3P(key, actionData);
         }
       });

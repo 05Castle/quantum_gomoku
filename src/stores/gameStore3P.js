@@ -20,8 +20,7 @@ const RED_CONFIRMED = 9;
 // 플레이어 색상
 const PLAYER_COLORS = ['white', 'blue', 'red'];
 
-// 턴 시퀀스: [첫번째, 두번째]는 70돌, [세번째]는 90돌로 시작
-// white(70) → blue(70) → red(90) → white(90) → blue(90) → red(70) → 반복
+// 턴 시퀀스: 첫번째(white), 두번째(blue)는 70돌, 세번째(red)는 90돌로 시작
 const TURN_SEQUENCE_3P = [
   { player: 'white', type: 70 },
   { player: 'blue', type: 70 },
@@ -43,6 +42,10 @@ const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 3; // 9회
 
 const TOTAL_CHARACTERS = 8;
 const DEFAULT_CHARACTER = 0;
+
+// === 중복 처리 방지용 모듈 레벨 Set ===
+// React 렌더링 사이클 밖에서 관리되므로 리렌더링에 영향받지 않음
+const processedKeys = new Set();
 
 // 사운드 재생
 const playSound = (soundFile) => {
@@ -67,9 +70,9 @@ export const useGameStore3P = create((set, get) => ({
 
   // 닉네임
   myNickname: '',
+  hostNickname: '',
   player2Nickname: '',
   player3Nickname: '',
-  hostNickname: '',
 
   // 캐릭터
   myCharacter: DEFAULT_CHARACTER,
@@ -92,9 +95,6 @@ export const useGameStore3P = create((set, get) => ({
   player3CheckCount: MAX_CHECKS_PER_PLAYER,
   totalChecksUsed: 0,
 
-  // === 처리한 액션 키 추적 (중복 처리 방지) ===
-  processedActionKeys: new Set(),
-
   // === 매칭 상태 ===
   matchingState: 'waiting',
 
@@ -107,21 +107,16 @@ export const useGameStore3P = create((set, get) => ({
     myCharacter = DEFAULT_CHARACTER
   ) => set({ myNickname, playerRole, roomId, myCharacter }),
 
-  // 색상 배정 (방 데이터 기반)
-  // host → white, player2 → blue, player3 → red (순서는 고정, 나중에 랜덤 가능)
+  // 색상 배정: host → white, player2 → blue, player3 → red
   setMyColor: (playerRole) => {
-    const colorMap = {
-      host: 'white',
-      player2: 'blue',
-      player3: 'red',
-    };
+    const colorMap = { host: 'white', player2: 'blue', player3: 'red' };
     set({ myColor: colorMap[playerRole] || 'white' });
   },
 
   setConnectionState: (isConnected) => set({ isConnected }),
   setMatchingState: (state) => set({ matchingState: state }),
 
-  // 상대방 닉네임/캐릭터 업데이트 (Firestore 구독 시)
+  // 상대방 닉네임/캐릭터 업데이트
   updatePlayersFromRoom: (roomData) => {
     set({
       hostNickname: roomData.hostNickname || '',
@@ -133,7 +128,8 @@ export const useGameStore3P = create((set, get) => ({
   },
 
   // 게임 상태 초기화
-  resetGame3P: () =>
+  resetGame3P: () => {
+    processedKeys.clear(); // 모듈 레벨 Set 초기화
     set({
       board: createEmptyBoard(),
       originalBoard: createEmptyBoard(),
@@ -147,20 +143,21 @@ export const useGameStore3P = create((set, get) => ({
       player2CheckCount: MAX_CHECKS_PER_PLAYER,
       player3CheckCount: MAX_CHECKS_PER_PLAYER,
       totalChecksUsed: 0,
-      processedActionKeys: new Set(),
-    }),
+    });
+  },
 
   // 방 나가기
-  exitRoom3P: () =>
+  exitRoom3P: () => {
+    processedKeys.clear(); // 모듈 레벨 Set 초기화
     set({
       isConnected: false,
       roomId: '',
       playerRole: null,
       myColor: null,
       myNickname: '',
+      hostNickname: '',
       player2Nickname: '',
       player3Nickname: '',
-      hostNickname: '',
       board: createEmptyBoard(),
       originalBoard: createEmptyBoard(),
       turnIndex: 0,
@@ -173,9 +170,9 @@ export const useGameStore3P = create((set, get) => ({
       player2CheckCount: MAX_CHECKS_PER_PLAYER,
       player3CheckCount: MAX_CHECKS_PER_PLAYER,
       totalChecksUsed: 0,
-      processedActionKeys: new Set(),
       matchingState: 'waiting',
-    }),
+    });
+  },
 
   // 돌 놓기
   placeStone3P: (row, col) => {
@@ -256,9 +253,6 @@ export const useGameStore3P = create((set, get) => ({
             const otherColors = PLAYER_COLORS.filter(
               (c) => c !== stoneInfo.player
             );
-            // random이 probability 이상이면 실패
-            // 실패 확률 (1 - probability)를 두 상대에게 반반
-            const failProb = 1 - probability;
             const rand2 = Math.random();
             finalColor = rand2 < 0.5 ? otherColors[0] : otherColors[1];
           }
@@ -412,14 +406,9 @@ export const useGameStore3P = create((set, get) => ({
 
   // 외부 액션 처리 (다른 플레이어에게 받은 액션)
   processReceivedAction3P: (actionKey, actionData) => {
-    const state = get();
-
-    // 중복 처리 방지
-    if (state.processedActionKeys.has(actionKey)) return;
-
-    const newProcessedKeys = new Set(state.processedActionKeys);
-    newProcessedKeys.add(actionKey);
-    set({ processedActionKeys: newProcessedKeys });
+    // 모듈 레벨 Set으로 중복 처리 방지
+    if (processedKeys.has(actionKey)) return;
+    processedKeys.add(actionKey);
 
     const { action } = actionData;
 
@@ -427,10 +416,10 @@ export const useGameStore3P = create((set, get) => ({
       case GAME_ACTIONS_3P.PLACE_STONE: {
         const { row, col, player, type, turnIndex } = actionData;
         const stoneValue = getStoneValue3P(player, type);
-        const currentState = get();
+        const state = get();
 
-        const newBoard = currentState.board.map((r) => [...r]);
-        const newOriginalBoard = currentState.originalBoard.map((r) => [...r]);
+        const newBoard = state.board.map((r) => [...r]);
+        const newOriginalBoard = state.originalBoard.map((r) => [...r]);
         newBoard[row][col] = stoneValue;
         newOriginalBoard[row][col] = stoneValue;
 
@@ -438,7 +427,7 @@ export const useGameStore3P = create((set, get) => ({
           board: newBoard,
           originalBoard: newOriginalBoard,
           hasPlacedStone: true,
-          turnIndex: turnIndex ?? currentState.turnIndex,
+          turnIndex: turnIndex ?? state.turnIndex,
         });
         playSound('place.mp3');
         break;
@@ -588,7 +577,6 @@ const getMyCheckCount = (
 };
 
 // 3인 승리 판정
-// checker: 체크를 누른 플레이어 색상
 const checkWin3P = (board, checker = null) => {
   const directions = [
     [0, 1],
@@ -631,7 +619,6 @@ const checkWin3P = (board, checker = null) => {
   }
 
   const winners = PLAYER_COLORS.filter((c) => wins[c].length > 0);
-
   if (winners.length === 0) return null;
 
   // 체크한 플레이어도 오목 달성 → 체크한 플레이어 승리
@@ -639,17 +626,14 @@ const checkWin3P = (board, checker = null) => {
     return wins[checker][0];
   }
 
-  // 체크한 플레이어는 오목 없고 상대 1명만 오목 → 그 플레이어 승리
   const otherWinners = winners.filter((c) => c !== checker);
+
+  // 상대 1명만 오목 → 그 플레이어 승리
   if (otherWinners.length === 1) {
     return wins[otherWinners[0]][0];
   }
 
-  // 체크한 플레이어 오목 없고 상대 2명 모두 오목 → 무효 (null 반환, 게임 계속)
-  if (otherWinners.length >= 2) {
-    return null;
-  }
-
+  // 상대 2명 모두 오목 → 무효, 게임 계속
   return null;
 };
 

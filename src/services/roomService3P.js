@@ -186,7 +186,7 @@ export const sendGameAction3P = async (roomId, actionData) => {
       updateData.totalChecksUsed = 0;
     } else {
       // 턴 인덱스를 키로 액션 저장 (덮어쓰기 방지)
-      const turnKey = `t${actionData.turnIndex ?? roomData.currentTurnIndex}`;
+      const turnKey = `${actionData.sender}_${actionData.timestamp ?? Date.now()}`;
       updateData[`actions.${turnKey}`] = {
         ...actionData,
         timestamp: Date.now(),

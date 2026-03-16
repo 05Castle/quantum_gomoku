@@ -215,7 +215,7 @@ const MatchingScreen3P = () => {
       <div className="matching-card">
         <h1 className="game-title">램램도 이길 수 있다!</h1>
         <img className="title-img" src={title} alt="양자오목" />
-        <div className="mode-badge">👥👤 3인 모드</div>
+        <div className="mode-badge">👨‍👦‍👦 3인 모드</div>
 
         {/* 대기 화면 */}
         <div className="waiting-section">

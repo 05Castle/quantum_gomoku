@@ -531,7 +531,7 @@ input:focus-visible {
 }
 
 .mode-3p-btn {
-  background: linear-gradient(135deg, #f7971e, #ffd200);
+  background: linear-gradient(135deg, #1ebaf7, #00b7ff);
   color: white;
 }
 
@@ -542,7 +542,7 @@ input:focus-visible {
 /* === M3: 3인 모드 매칭 화면 === */
 .mode-badge {
   display: inline-block;
-  background: linear-gradient(135deg, #f7971e, #ffd200);
+  background: linear-gradient(135deg, #1ebaf7, #00b7ff);
   color: white;
   padding: 4px 14px;
   border-radius: 20px;

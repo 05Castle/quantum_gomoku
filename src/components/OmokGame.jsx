@@ -19,10 +19,8 @@ const OmokGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 상대방 나감 상태
   const [opponentLeft, setOpponentLeft] = React.useState(false);
 
-  // Zustand 상태들
   const {
     board,
     turnIndex,
@@ -34,6 +32,7 @@ const OmokGame = () => {
     myNickname,
     opponentNickname,
     playerRole,
+    myColor,
 
     placeStone,
     executeCheck,
@@ -47,6 +46,7 @@ const OmokGame = () => {
     getMyRemainingChecks,
     canCheck,
     setOpponentCharacter,
+    setStoneColors, // Ver 1.3
   } = useGameStore();
 
   const [hoveredCell, setHoveredCell] = React.useState(null);
@@ -60,6 +60,7 @@ const OmokGame = () => {
         opponentNickname,
         opponentCharacter,
         playerRole,
+        hostColor,
       } = location.state;
 
       setPlayerInfo(
@@ -74,8 +75,19 @@ const OmokGame = () => {
       if (opponentCharacter !== undefined) {
         setOpponentCharacter(opponentCharacter);
       }
+
+      // Ver 1.3: 돌 색상 설정
+      if (hostColor) {
+        setStoneColors(hostColor);
+      }
     }
-  }, [location.state, roomId, setPlayerInfo, setOpponentCharacter]);
+  }, [
+    location.state,
+    roomId,
+    setPlayerInfo,
+    setOpponentCharacter,
+    setStoneColors,
+  ]);
 
   // 방 구독 시작
   useEffect(() => {
@@ -103,23 +115,19 @@ const OmokGame = () => {
 
   // 방 업데이트 처리
   const handleRoomUpdate = (roomData) => {
-    // 상대방 나감 감지
     if (
       playerRole === 'guest' &&
       roomData.status === 'waiting' &&
       !roomData.guestNickname
     ) {
-      // 호스트가 방을 삭제하면 이쪽은 null을 받게 되므로 handleRoomError에서 처리
-      // 여기선 호스트가 나가서 status가 바뀐 케이스
       return;
     }
 
     if (playerRole === 'host') {
-      // 게스트가 나갔을 때: 게임 중이었는데 guestNickname이 null로 바뀜
       if (
         roomData.status === 'waiting' &&
         roomData.currentPlayerCount === 1 &&
-        opponentNickname // 이전에 상대방이 있었을 때만
+        opponentNickname
       ) {
         setOpponentLeft(true);
         return;
@@ -138,6 +146,11 @@ const OmokGame = () => {
       setOpponentCharacter(opponentCharacterIndex);
     }
 
+    // Ver 1.3: 새 게임 시작 시 색상 재배정 감지
+    if (roomData.hostColor) {
+      setStoneColors(roomData.hostColor);
+    }
+
     // 상대방의 게임 액션 처리
     if (roomData.currentAction) {
       const action = roomData.currentAction;
@@ -147,13 +160,10 @@ const OmokGame = () => {
     }
   };
 
-  // 방 에러 처리 (방이 삭제된 경우 = 호스트가 나간 경우)
   const handleRoomError = (error) => {
     console.error('게임 중 방 에러:', error);
     setConnectionState(false);
-
     if (error.includes('삭제') || error.includes('찾을 수 없습니다')) {
-      // 호스트가 나가서 방이 삭제된 경우
       setOpponentLeft(true);
     }
   };
@@ -161,18 +171,6 @@ const OmokGame = () => {
   const currentTurn = getCurrentTurn();
   const isCurrentlyMyTurn = isMyTurn();
   const remainingChecks = getMyRemainingChecks();
-
-  const getStoneValue = (player, type) => {
-    const BLACK_90 = 1,
-      BLACK_70 = 2,
-      WHITE_90 = 4,
-      WHITE_70 = 5;
-    if (player === 'black') {
-      return type === 90 ? BLACK_90 : BLACK_70;
-    } else {
-      return type === 90 ? WHITE_90 : WHITE_70;
-    }
-  };
 
   const getStoneInfo = (cellValue) => {
     const BLACK_90 = 1,
@@ -222,7 +220,6 @@ const OmokGame = () => {
 
       playSound('place.mp3');
       const actionData = placeStone(row, col);
-
       if (actionData) {
         sendGameAction(roomId, { ...actionData, sender: playerRole });
       }
@@ -265,21 +262,17 @@ const OmokGame = () => {
     });
   };
 
+  // Ver 1.3: myColor 기준으로 현재 플레이어 닉네임 표시
   const getCurrentPlayerDisplay = () => {
-    if (currentTurn.player === 'black') {
-      return playerRole === 'host' ? myNickname : opponentNickname;
-    } else {
-      return playerRole === 'guest' ? myNickname : opponentNickname;
-    }
+    if (currentTurn.player === myColor) return myNickname;
+    return opponentNickname;
   };
 
+  // Ver 1.3: myColor 기준으로 승리자 닉네임 표시
   const getWinnerDisplay = () => {
     if (winner === 'draw') return '무승부!';
-    if (winner === 'black') {
-      return playerRole === 'host' ? myNickname : opponentNickname;
-    } else {
-      return playerRole === 'guest' ? myNickname : opponentNickname;
-    }
+    if (winner === myColor) return myNickname;
+    return opponentNickname;
   };
 
   const renderCell = (row, col) => {

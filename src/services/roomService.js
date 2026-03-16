@@ -19,9 +19,9 @@ const ROOM_STATUS = {
 // === 방 관리 함수들 ===
 
 /**
- * Ver 1.2: 새 방 생성 (캐릭터 정보 포함)
+ * Ver 1.3: 새 방 생성 (캐릭터 정보 + 돌 색상 랜덤 배정)
  * @param {string} hostNickname - 호스트 닉네임
- * @param {number} hostCharacter - 호스트 캐릭터 인덱스 (0~4)
+ * @param {number} hostCharacter - 호스트 캐릭터 인덱스 (0~7)
  * @returns {object} - { success: boolean, roomId: string, error?: string }
  */
 export const createRoom = async (hostNickname, hostCharacter = 0) => {
@@ -40,13 +40,17 @@ export const createRoom = async (hostNickname, hostCharacter = 0) => {
       }
     } while (await documentExists('rooms', roomId));
 
-    // 방 데이터 구조 (Ver 1.2: 캐릭터 정보 추가)
+    // Ver 1.3: 호스트의 돌 색상 랜덤 배정
+    const hostColor = Math.random() < 0.5 ? 'black' : 'white';
+
+    // 방 데이터 구조
     const roomData = {
       // 기본 방 정보
       hostNickname: hostNickname,
-      hostCharacter: hostCharacter, // Ver 1.2: 호스트 캐릭터
+      hostCharacter: hostCharacter,
+      hostColor: hostColor, // Ver 1.3: 호스트 돌 색상
       guestNickname: null,
-      guestCharacter: 0, // Ver 1.2: 게스트 캐릭터 (기본값)
+      guestCharacter: 0,
       hostConnected: true,
       guestConnected: false,
 
@@ -70,7 +74,7 @@ export const createRoom = async (hostNickname, hostCharacter = 0) => {
 
     await createDocument('rooms', roomId, roomData);
 
-    return { success: true, roomId };
+    return { success: true, roomId, hostColor };
   } catch (error) {
     console.error('방 생성 실패:', error);
     return { success: false, error: getErrorMessage(error) };
@@ -81,7 +85,7 @@ export const createRoom = async (hostNickname, hostCharacter = 0) => {
  * Ver 1.2: 방 참가 (캐릭터 정보 포함)
  * @param {string} roomId - 방 ID
  * @param {string} guestNickname - 게스트 닉네임
- * @param {number} guestCharacter - 게스트 캐릭터 인덱스 (0~4)
+ * @param {number} guestCharacter - 게스트 캐릭터 인덱스 (0~7)
  * @returns {object} - { success: boolean, roomData?: object, error?: string }
  */
 export const joinRoom = async (roomId, guestNickname, guestCharacter = 0) => {
@@ -117,7 +121,7 @@ export const joinRoom = async (roomId, guestNickname, guestCharacter = 0) => {
       };
     }
 
-    // Ver 1.2: 게스트 추가 (캐릭터 정보 포함)
+    // 게스트 추가
     const updateData = {
       guestNickname: guestNickname,
       guestCharacter: guestCharacter,
@@ -169,7 +173,6 @@ export const sendGameAction = async (roomId, actionData) => {
           ? roomData.hostCheckCount
           : roomData.guestCheckCount;
 
-      // 서버에서도 체크 횟수 검증
       if (currentCheckCount <= 0) {
         return { success: false, error: '체크 횟수가 부족합니다.' };
       }
@@ -183,28 +186,26 @@ export const sendGameAction = async (roomId, actionData) => {
       },
     };
 
-    // turnIndex가 있으면 추가
     if (actionData.turnIndex !== undefined) {
       updateData.currentTurnIndex = actionData.turnIndex;
     }
 
-    // 체크 액션인 경우 체크 횟수 정보 동기화 (강제로 값 설정)
     if (actionData.action === 'check') {
-      // 서버의 체크 횟수를 액션 데이터의 값으로 덮어쓰기
       updateData.hostCheckCount = actionData.hostCheckCount;
       updateData.guestCheckCount = actionData.guestCheckCount;
       updateData.totalChecksUsed = actionData.totalChecksUsed;
     }
 
-    // 리셋 액션인 경우 상태 및 체크 횟수 초기화
+    // Ver 1.3: 리셋 시 새로운 랜덤 색상 배정
     if (actionData.action === 'reset_game') {
+      const newHostColor = Math.random() < 0.5 ? 'black' : 'white';
       updateData.status = ROOM_STATUS.PLAYING;
+      updateData.hostColor = newHostColor;
       updateData.hostCheckCount = 4;
       updateData.guestCheckCount = 4;
       updateData.totalChecksUsed = 0;
     }
 
-    // 게임 종료 액션인 경우 상태 변경
     if (actionData.action === 'check' && actionData.gameOver) {
       updateData.status = ROOM_STATUS.FINISHED;
     }
@@ -220,10 +221,6 @@ export const sendGameAction = async (roomId, actionData) => {
 
 /**
  * 방 실시간 구독
- * @param {string} roomId - 방 ID
- * @param {function} onRoomUpdate - 방 업데이트 콜백
- * @param {function} onError - 에러 콜백
- * @returns {function} - 구독 해제 함수
  */
 export const subscribeToRoom = (roomId, onRoomUpdate, onError) => {
   const unsubscribe = subscribeToDocument(
@@ -248,32 +245,26 @@ export const subscribeToRoom = (roomId, onRoomUpdate, onError) => {
 };
 
 /**
- * Ver 1.2: 방 나가기 (캐릭터 정보 초기화 포함)
- * @param {string} roomId - 방 ID
- * @param {string} playerRole - 플레이어 역할 ('host' | 'guest')
- * @returns {object} - { success: boolean, error?: string }
+ * Ver 1.2: 방 나가기
  */
 export const leaveRoom = async (roomId, playerRole) => {
   try {
     const roomData = await getDocument('rooms', roomId);
 
     if (!roomData) {
-      return { success: true }; // 이미 방이 없으면 성공으로 처리
+      return { success: true };
     }
 
     if (playerRole === 'host') {
-      // 호스트가 나가면 방 삭제
       await deleteDocument('rooms', roomId);
     } else {
-      // Ver 1.2: 게스트가 나가면 대기 상태로 복원 (캐릭터 정보도 초기화)
       const updateData = {
         guestNickname: null,
-        guestCharacter: 0, // Ver 1.2: 게스트 캐릭터 초기화
+        guestCharacter: 0,
         guestConnected: false,
         currentPlayerCount: 1,
         status: ROOM_STATUS.WAITING,
         currentAction: null,
-        // 체크 횟수도 초기화
         hostCheckCount: 4,
         guestCheckCount: 4,
         totalChecksUsed: 0,
@@ -291,16 +282,11 @@ export const leaveRoom = async (roomId, playerRole) => {
 
 /**
  * 연결 상태 업데이트
- * @param {string} roomId - 방 ID
- * @param {string} playerRole - 플레이어 역할
- * @param {boolean} connected - 연결 상태
  */
 export const updateConnectionStatus = async (roomId, playerRole, connected) => {
   try {
     const field = playerRole === 'host' ? 'hostConnected' : 'guestConnected';
-    const updateData = { [field]: connected };
-
-    await updateDocument('rooms', roomId, updateData);
+    await updateDocument('rooms', roomId, { [field]: connected });
   } catch (error) {
     console.error('연결 상태 업데이트 실패:', error);
   }
@@ -308,8 +294,6 @@ export const updateConnectionStatus = async (roomId, playerRole, connected) => {
 
 /**
  * 방 정보 조회 (일회성)
- * @param {string} roomId - 방 ID
- * @returns {object|null} - 방 데이터 또는 null
  */
 export const getRoomInfo = async (roomId) => {
   try {
@@ -320,5 +304,4 @@ export const getRoomInfo = async (roomId) => {
   }
 };
 
-// 상수 export
 export { ROOM_STATUS };

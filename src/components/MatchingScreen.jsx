@@ -13,7 +13,6 @@ import './MatchingScreen.css';
 const MatchingScreen = () => {
   const navigate = useNavigate();
 
-  // Zustand 상태들
   const {
     matchingState,
     myNickname,
@@ -26,52 +25,41 @@ const MatchingScreen = () => {
     setOpponentNickname,
     setOpponentCharacter,
     resetGame,
-    // Ver 1.2: 캐릭터 관련 함수들
     setMyCharacter,
     nextCharacter,
     prevCharacter,
     getCharacterImage,
   } = useGameStore();
 
-  // 로컬 상태들 (UI 전용)
   const [inputNickname, setInputNickname] = useState(myNickname || '');
   const [inputRoomId, setInputRoomId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
   const [currentRoomId, setCurrentRoomId] = useState('');
   const [currentPlayerRole, setCurrentPlayerRole] = useState('');
-
-  // 복사 버튼 상태 추가
   const [isCopied, setIsCopied] = useState(false);
-
-  // Firestore 구독 해제 함수
   const [unsubscribeRoom, setUnsubscribeRoom] = useState(null);
 
-  // 닉네임 확인
+  // Ver 1.3: 호스트 색상 저장용
+  const [hostColor, setHostColor] = useState(null);
+
   const handleNicknameSubmit = () => {
     if (!inputNickname.trim()) {
       setErrorMessage('닉네임을 입력해주세요!');
       return;
     }
-
     if (inputNickname.length > 10) {
       setErrorMessage('닉네임은 10자 이내로 입력해주세요!');
       return;
     }
-
-    // Zustand에 닉네임 저장 (캐릭터는 이미 선택되어 있음)
     setPlayerInfo(inputNickname, null, '', '', myCharacter);
     setErrorMessage('');
     setMatchingState('matching');
   };
 
-  // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
-      if (unsubscribeRoom) {
-        unsubscribeRoom();
-      }
+      if (unsubscribeRoom) unsubscribeRoom();
     };
   }, [unsubscribeRoom]);
 
@@ -81,32 +69,28 @@ const MatchingScreen = () => {
     setErrorMessage('');
 
     try {
-      const result = await createRoom(myNickname, myCharacter); // Ver 1.2: 캐릭터 정보 포함
+      const result = await createRoom(myNickname, myCharacter);
 
       if (result.success) {
-        // 로컬 상태에 즉시 저장
         setCurrentRoomId(result.roomId);
         setCurrentPlayerRole('host');
+        setHostColor(result.hostColor); // Ver 1.3: hostColor 저장
 
-        // Zustand에 방 정보 저장
         setPlayerInfo(myNickname, 'host', result.roomId, '', myCharacter);
         setMatchingState('waiting');
 
-        // 방 구독 시작
         const unsubscribe = subscribeToRoom(
           result.roomId,
-          (roomData) => handleRoomUpdate(roomData, result.roomId, 'host'),
+          (roomData) =>
+            handleRoomUpdate(roomData, result.roomId, 'host', result.hostColor),
           handleRoomError
         );
         setUnsubscribeRoom(() => unsubscribe);
-
-        console.log('방 생성 성공:', result.roomId);
       } else {
         setErrorMessage(result.error);
       }
     } catch (error) {
       setErrorMessage('방 생성에 실패했습니다. 다시 시도해주세요.');
-      console.error('방 생성 오류:', error);
     }
 
     setIsLoading(false);
@@ -124,14 +108,12 @@ const MatchingScreen = () => {
 
     try {
       const roomIdUpper = inputRoomId.toUpperCase();
-      const result = await joinRoom(roomIdUpper, myNickname, myCharacter); // Ver 1.2: 캐릭터 정보 포함
+      const result = await joinRoom(roomIdUpper, myNickname, myCharacter);
 
       if (result.success) {
-        // 로컬 상태에 즉시 저장
         setCurrentRoomId(roomIdUpper);
         setCurrentPlayerRole('guest');
 
-        // Zustand에 방 정보 저장 (Ver 1.2: 호스트 캐릭터 정보도 설정)
         setPlayerInfo(
           myNickname,
           'guest',
@@ -143,23 +125,26 @@ const MatchingScreen = () => {
         setOpponentCharacter(result.roomData.hostCharacter);
         setMatchingState('connecting');
 
-        // 방 구독 시작
         const unsubscribe = subscribeToRoom(
           roomIdUpper,
-          (roomData) => handleRoomUpdate(roomData, roomIdUpper, 'guest'),
+          (roomData) =>
+            handleRoomUpdate(
+              roomData,
+              roomIdUpper,
+              'guest',
+              result.roomData.hostColor
+            ),
           handleRoomError
         );
         setUnsubscribeRoom(() => unsubscribe);
 
-        console.log('방 참가 성공:', roomIdUpper);
-
-        // 게임이 바로 시작되므로 게임 화면으로 이동
         setTimeout(() => {
           startGame(
             result.roomData.hostNickname,
             roomIdUpper,
             'guest',
-            result.roomData.hostCharacter
+            result.roomData.hostCharacter,
+            result.roomData.hostColor // Ver 1.3: hostColor 전달
           );
         }, 1000);
       } else {
@@ -167,86 +152,64 @@ const MatchingScreen = () => {
       }
     } catch (error) {
       setErrorMessage('방 참가에 실패했습니다. 방 ID를 확인해주세요.');
-      console.error('방 참가 오류:', error);
     }
 
     setIsLoading(false);
   };
 
   // 방 업데이트 처리
-  const handleRoomUpdate = (roomData, gameRoomId, gamePlayerRole) => {
-    console.log('방 업데이트:', roomData);
-    console.log('전달받은 gameRoomId:', gameRoomId);
-    console.log('전달받은 gamePlayerRole:', gamePlayerRole);
-
-    // 상대방이 참가했을 때
+  const handleRoomUpdate = (
+    roomData,
+    gameRoomId,
+    gamePlayerRole,
+    currentHostColor
+  ) => {
     if (
       gamePlayerRole === 'host' &&
       roomData.guestNickname &&
       roomData.status === 'playing'
     ) {
-      console.log('게스트 참가됨:', roomData.guestNickname);
-      // Ver 1.2: 게스트 캐릭터 정보도 전달
       setOpponentCharacter(roomData.guestCharacter || 0);
       startGame(
         roomData.guestNickname,
         gameRoomId,
         gamePlayerRole,
-        roomData.guestCharacter
+        roomData.guestCharacter,
+        currentHostColor || roomData.hostColor // Ver 1.3: hostColor 전달
       );
     }
 
-    // 상대방이 나갔을 때
     if (roomData.status === 'waiting' && roomData.currentPlayerCount === 1) {
       if (gamePlayerRole === 'guest') {
-        // 호스트가 나간 경우
         setErrorMessage('호스트가 방을 나갔습니다.');
         handleGoBack();
       }
     }
   };
 
-  // 방 에러 처리
   const handleRoomError = (error) => {
     console.error('방 에러:', error);
     setErrorMessage(error);
     setMatchingState('matching');
-
     if (unsubscribeRoom) {
       unsubscribeRoom();
       setUnsubscribeRoom(null);
     }
   };
 
-  // 게임 시작 (Ver 1.2: 상대방 캐릭터 정보 추가)
+  // Ver 1.3: hostColor 파라미터 추가
   const startGame = (
     opponentName,
     gameRoomId,
     gamePlayerRole,
-    opponentCharacterIndex = 0
+    opponentCharacterIndex = 0,
+    gameHostColor = null
   ) => {
-    console.log('=== 게임 시작 ===');
-    console.log('opponentName:', opponentName);
-    console.log('gameRoomId:', gameRoomId);
-    console.log('gamePlayerRole:', gamePlayerRole);
-    console.log('opponentCharacter:', opponentCharacterIndex);
-    console.log('navigate URL:', `/game/${gameRoomId}`);
-
-    // 상대방 닉네임과 캐릭터 설정
     setOpponentNickname(opponentName);
     setOpponentCharacter(opponentCharacterIndex);
-
-    // 게임 상태 초기화
     resetGame();
-
-    // 매칭 상태를 플레이로 변경
     setMatchingState('playing');
 
-    console.log(
-      `게임 시작: ${myNickname} vs ${opponentName} (방: ${gameRoomId})`
-    );
-
-    // 게임 화면으로 이동 (roomId 포함)
     navigate(`/game/${gameRoomId}`, {
       state: {
         myNickname,
@@ -255,54 +218,35 @@ const MatchingScreen = () => {
         opponentCharacter: opponentCharacterIndex,
         playerRole: gamePlayerRole,
         roomId: gameRoomId,
+        hostColor: gameHostColor, // Ver 1.3: hostColor 전달
       },
     });
   };
 
-  // 방 ID 생성 (6자리 랜덤)
-  const generateRoomId = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-  };
-
-  // 뒤로가기
   const handleGoBack = async () => {
-    // Firestore 구독 해제
     if (unsubscribeRoom) {
       unsubscribeRoom();
       setUnsubscribeRoom(null);
     }
-
-    // 방에서 나가기
     if (roomId && playerRole) {
       await leaveRoom(roomId, playerRole);
     }
-
     setMatchingState('matching');
     setErrorMessage('');
     setInputRoomId('');
   };
 
-  // 닉네임 수정하기
   const handleEditNickname = () => {
     setInputNickname(myNickname);
     setMatchingState('nickname-input');
   };
 
-  // 방 ID 복사 (개선된 버전)
   const copyRoomId = async () => {
     try {
       await navigator.clipboard.writeText(roomId);
-
-      // 복사 성공 시 체크 이모지로 변경
       setIsCopied(true);
-
-      // 2초 후 원래 이모지로 되돌리기
-      setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
+      setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
-      // 복사 실패 시 기존 alert 사용
-      console.error('복사 실패:', error);
       alert('복사에 실패했습니다. 수동으로 복사해주세요.');
     }
   };
@@ -316,7 +260,6 @@ const MatchingScreen = () => {
         {/* 닉네임 입력 화면 */}
         {matchingState === 'nickname-input' && (
           <div className="nickname-section">
-            {/* Ver 1.2: 캐릭터 선택 UI 추가 */}
             <div className="character-selection">
               <p>캐릭터를 선택하세요</p>
               <div className="character-selector">
@@ -387,7 +330,6 @@ const MatchingScreen = () => {
               >
                 🏠 방 만들기
               </button>
-
               <div className="join-section">
                 <input
                   type="text"
@@ -490,17 +432,14 @@ const MatchingScreen = () => {
           </div>
         )}
 
-        {/* 에러 메시지 */}
         {errorMessage && <div className="error-message">⚠️ {errorMessage}</div>}
 
-        {/* 로딩 오버레이 */}
         {isLoading && (
           <div className="loading-overlay">
             <div className="spinner"></div>
           </div>
         )}
 
-        {/* 디버깅용 상태 표시 */}
         <div style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
           <div>매칭 상태: {matchingState}</div>
           <div>플레이어 역할: {playerRole || '없음'}</div>

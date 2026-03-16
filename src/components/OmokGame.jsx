@@ -19,9 +19,11 @@ const OmokGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 상대방 나감 상태
+  const [opponentLeft, setOpponentLeft] = React.useState(false);
+
   // Zustand 상태들
   const {
-    // 상태
     board,
     turnIndex,
     winner,
@@ -33,7 +35,6 @@ const OmokGame = () => {
     opponentNickname,
     playerRole,
 
-    // 액션들
     placeStone,
     executeCheck,
     passTurn,
@@ -45,14 +46,12 @@ const OmokGame = () => {
     setConnectionState,
     getMyRemainingChecks,
     canCheck,
-    // Ver 1.2: 캐릭터 관련 함수 추가
     setOpponentCharacter,
   } = useGameStore();
 
-  // 호버 상태 (로컬에서만 관리)
   const [hoveredCell, setHoveredCell] = React.useState(null);
 
-  // Ver 1.2: 컴포넌트 마운트 시 플레이어 정보 설정 (캐릭터 정보 포함)
+  // 컴포넌트 마운트 시 플레이어 정보 설정
   useEffect(() => {
     if (location.state) {
       const {
@@ -63,9 +62,6 @@ const OmokGame = () => {
         playerRole,
       } = location.state;
 
-      console.log('OmokGame - location.state:', location.state);
-
-      // Ver 1.2: 캐릭터 정보도 함께 설정
       setPlayerInfo(
         myNickname,
         playerRole,
@@ -75,7 +71,6 @@ const OmokGame = () => {
         opponentCharacter || 0
       );
 
-      // 상대방 캐릭터도 별도로 설정 (안전장치)
       if (opponentCharacter !== undefined) {
         setOpponentCharacter(opponentCharacter);
       }
@@ -99,19 +94,39 @@ const OmokGame = () => {
     };
   }, [roomId, playerRole]);
 
-  // 사운드 재생 함수
   const playSound = (soundFile) => {
     try {
       const audio = new Audio(`/sounds/${soundFile}`);
       audio.play().catch(() => {});
-    } catch (error) {
-      // 사운드 오류는 조용히 무시
-    }
+    } catch (error) {}
   };
 
   // 방 업데이트 처리
   const handleRoomUpdate = (roomData) => {
-    // Ver 1.2: 상대방 캐릭터 정보 업데이트
+    // 상대방 나감 감지
+    if (
+      playerRole === 'guest' &&
+      roomData.status === 'waiting' &&
+      !roomData.guestNickname
+    ) {
+      // 호스트가 방을 삭제하면 이쪽은 null을 받게 되므로 handleRoomError에서 처리
+      // 여기선 호스트가 나가서 status가 바뀐 케이스
+      return;
+    }
+
+    if (playerRole === 'host') {
+      // 게스트가 나갔을 때: 게임 중이었는데 guestNickname이 null로 바뀜
+      if (
+        roomData.status === 'waiting' &&
+        roomData.currentPlayerCount === 1 &&
+        opponentNickname // 이전에 상대방이 있었을 때만
+      ) {
+        setOpponentLeft(true);
+        return;
+      }
+    }
+
+    // 상대방 캐릭터 정보 업데이트
     if (
       roomData.hostCharacter !== undefined &&
       roomData.guestCharacter !== undefined
@@ -120,30 +135,26 @@ const OmokGame = () => {
         playerRole === 'host'
           ? roomData.guestCharacter
           : roomData.hostCharacter;
-
       setOpponentCharacter(opponentCharacterIndex);
     }
 
     // 상대방의 게임 액션 처리
     if (roomData.currentAction) {
       const action = roomData.currentAction;
-
-      // 내가 보낸 액션은 무시 (중복 처리 방지)
       if (action.sender !== playerRole) {
         processReceivedAction(action);
       }
     }
   };
 
-  // 방 에러 처리
+  // 방 에러 처리 (방이 삭제된 경우 = 호스트가 나간 경우)
   const handleRoomError = (error) => {
     console.error('게임 중 방 에러:', error);
     setConnectionState(false);
 
-    // 심각한 에러인 경우 매칭 화면으로 이동
     if (error.includes('삭제') || error.includes('찾을 수 없습니다')) {
-      alert('게임 연결이 끊어졌습니다. 매칭 화면으로 돌아갑니다.');
-      navigate('/');
+      // 호스트가 나가서 방이 삭제된 경우
+      setOpponentLeft(true);
     }
   };
 
@@ -151,7 +162,6 @@ const OmokGame = () => {
   const isCurrentlyMyTurn = isMyTurn();
   const remainingChecks = getMyRemainingChecks();
 
-  // 돌 타입을 셀 값으로 변환
   const getStoneValue = (player, type) => {
     const BLACK_90 = 1,
       BLACK_70 = 2,
@@ -164,7 +174,6 @@ const OmokGame = () => {
     }
   };
 
-  // 셀 값을 돌 정보로 변환
   const getStoneInfo = (cellValue) => {
     const BLACK_90 = 1,
       BLACK_70 = 2,
@@ -188,16 +197,10 @@ const OmokGame = () => {
     }
   };
 
-  // 돌 CSS 클래스 반환
   const getStoneClasses = (stoneInfo, isPreview = false) => {
     if (!stoneInfo) return '';
-
     let classes = ['stone'];
-
-    if (isPreview) {
-      classes.push('preview');
-    }
-
+    if (isPreview) classes.push('preview');
     if (stoneInfo.confirmed) {
       classes.push(
         stoneInfo.player === 'black' ? 'black-confirmed' : 'white-confirmed'
@@ -209,34 +212,19 @@ const OmokGame = () => {
         classes.push(stoneInfo.type === 90 ? 'white-90' : 'white-70');
       }
     }
-
     return classes.join(' ');
   };
 
-  // === 이벤트 핸들러들 ===
-
-  // 돌 놓기
   const handlePlaceStone = useCallback(
     (row, col) => {
-      // 내 턴이 아니면 무시
-      if (!isCurrentlyMyTurn) {
-        return;
-      }
-
+      if (!isCurrentlyMyTurn) return;
       if (gameOver || board[row][col] !== EMPTY || hasPlacedStone) return;
 
       playSound('place.mp3');
-
       const actionData = placeStone(row, col);
 
-      // Firestore로 액션 전송
       if (actionData) {
-        const actionWithSender = {
-          ...actionData,
-          sender: playerRole,
-        };
-
-        sendGameAction(roomId, actionWithSender);
+        sendGameAction(roomId, { ...actionData, sender: playerRole });
       }
     },
     [
@@ -250,59 +238,33 @@ const OmokGame = () => {
     ]
   );
 
-  // 체크 기능
   const handleCheck = () => {
     if (!canCheck()) return;
-
     playSound('check.mp3');
-
     const actionData = executeCheck();
-
-    // Firestore로 액션 전송
     if (actionData) {
-      const actionWithSender = {
-        ...actionData,
-        sender: playerRole,
-      };
-
-      sendGameAction(roomId, actionWithSender);
+      sendGameAction(roomId, { ...actionData, sender: playerRole });
     }
   };
 
-  // 넘어가기
   const handlePass = () => {
-    if (!isCurrentlyMyTurn) {
-      return;
-    }
-
+    if (!isCurrentlyMyTurn) return;
     const actionData = passTurn();
-
-    // Firestore로 액션 전송
     if (actionData) {
-      const actionWithSender = {
-        ...actionData,
-        sender: playerRole,
-      };
-
-      sendGameAction(roomId, actionWithSender);
+      sendGameAction(roomId, { ...actionData, sender: playerRole });
     }
   };
 
-  // 게임 리셋
   const handleResetGame = () => {
     playSound('start.mp3');
     resetGame();
-
-    const actionData = {
+    sendGameAction(roomId, {
       action: GAME_ACTIONS.RESET_GAME,
       timestamp: Date.now(),
       sender: playerRole,
-    };
-
-    sendGameAction(roomId, actionData);
+    });
   };
 
-  // 현재 플레이어 정보 표시용
   const getCurrentPlayerDisplay = () => {
     if (currentTurn.player === 'black') {
       return playerRole === 'host' ? myNickname : opponentNickname;
@@ -311,12 +273,8 @@ const OmokGame = () => {
     }
   };
 
-  // 승리자 표시용
   const getWinnerDisplay = () => {
-    if (winner === 'draw') {
-      return '무승부!';
-    }
-
+    if (winner === 'draw') return '무승부!';
     if (winner === 'black') {
       return playerRole === 'host' ? myNickname : opponentNickname;
     } else {
@@ -324,9 +282,6 @@ const OmokGame = () => {
     }
   };
 
-  // === 렌더링 함수들 ===
-
-  // 셀 렌더링
   const renderCell = (row, col) => {
     const cellValue = board[row][col];
     const stoneInfo = getStoneInfo(cellValue);
@@ -343,16 +298,11 @@ const OmokGame = () => {
         onMouseEnter={() => setHoveredCell({ row, col })}
         onMouseLeave={() => setHoveredCell(null)}
       >
-        {/* 격자선 */}
         <div className="grid-line-horizontal"></div>
         <div className="grid-line-vertical"></div>
-
-        {/* 교점 점 */}
         <div
           className={`intersection-dot ${isHovered && cellValue === EMPTY ? 'hovered' : ''}`}
         ></div>
-
-        {/* 실제 돌 */}
         {stoneInfo && (
           <div
             className={`${getStoneClasses(stoneInfo)} ${isWinningStone ? 'winning' : ''}`}
@@ -360,8 +310,6 @@ const OmokGame = () => {
             {!stoneInfo.confirmed && stoneInfo.type}
           </div>
         )}
-
-        {/* 미리보기 돌 (내 턴일 때만) */}
         {cellValue === EMPTY &&
           isHovered &&
           !gameOver &&
@@ -386,20 +334,17 @@ const OmokGame = () => {
 
   return (
     <div className="game-container">
-      {/* 독립된 컴포넌트들 */}
       <PlayerInfoBar />
-      <ConnectionStatus />
+      <ConnectionStatus opponentLeft={opponentLeft} />
 
-      {/* 게임 상태 */}
       <div className="game-status">
         {gameOver ? (
-          // 게임 종료 시: 승리자 + 리셋 버튼
           <>
             <div className="winner-info">
               {winner === 'draw' ? (
                 '🤝 무승부!'
               ) : (
-                <>🎉 {winner === 'black' ? '⚫ 흑돌' : '⚪ 백돌'} 승리! 🎉</>
+                <>{winner === 'black' ? '⚫ 흑돌' : '⚪ 백돌'} 승리! 🎉</>
               )}
             </div>
             <div className="winner-name">
@@ -414,7 +359,6 @@ const OmokGame = () => {
             </div>
           </>
         ) : (
-          // 게임 진행 시
           <>
             <div className="current-player">
               {getCurrentPlayerDisplay()}님의 차례 -{' '}
@@ -427,9 +371,7 @@ const OmokGame = () => {
             {hasPlacedStone && isCurrentlyMyTurn && (
               <div className="btn-container">
                 <div
-                  className={`btn check-btn ${
-                    !canCheck() ? 'disabled' : ''
-                  } ${remainingChecks === 0 ? 'no-checks' : ''}`}
+                  className={`btn check-btn ${!canCheck() ? 'disabled' : ''} ${remainingChecks === 0 ? 'no-checks' : ''}`}
                   onClick={canCheck() ? handleCheck : undefined}
                 >
                   체크! ({remainingChecks}/4)
@@ -443,7 +385,6 @@ const OmokGame = () => {
         )}
       </div>
 
-      {/* 게임 보드 */}
       <div
         className="board"
         style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}

@@ -59,14 +59,6 @@ const ChatBox = ({ roomId, myNickname }) => {
     }
   };
 
-  const formatTime = (date) => {
-    if (!date) return '';
-    return date.toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   return (
     <div className="chatbox">
       <div className="chatbox-header">💬 채팅</div>
@@ -84,7 +76,6 @@ const ChatBox = ({ roomId, myNickname }) => {
             >
               {!isMe && <div className="chat-nickname">{msg.nickname}</div>}
               <div className="chat-bubble">{msg.text}</div>
-              <div className="chat-time">{formatTime(msg.timestamp)}</div>
             </div>
           );
         })}

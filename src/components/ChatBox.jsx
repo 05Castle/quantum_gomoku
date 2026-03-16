@@ -7,13 +7,14 @@ const ChatBox = ({ roomId, myNickname }) => {
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   // 채팅 구독 (게임 구독과 완전히 분리)
   useEffect(() => {
     if (!roomId) return;
 
     const unsubscribe = subscribeToMessages(roomId, (newMessages) => {
-      setMessages([...newMessages]); // 기존: setMessages(newMessages)
+      setMessages([...newMessages]);
     });
 
     return () => unsubscribe();
@@ -39,8 +40,16 @@ const ChatBox = ({ roomId, myNickname }) => {
 
     setIsSending(true);
     setInputText('');
-    await sendMessage(roomId, myNickname, inputText);
-    setIsSending(false);
+
+    // try...finally 블록을 사용하여 오류가 나더라도 반드시 isSending을 false로 되돌리고 포커스를 잡아줌
+    try {
+      await sendMessage(roomId, myNickname, inputText);
+    } catch (error) {
+      console.error('메시지 전송 실패:', error);
+    } finally {
+      setIsSending(false);
+      inputRef.current?.focus(); // 전송 완료 후 다시 포커스
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -87,11 +96,15 @@ const ChatBox = ({ roomId, myNickname }) => {
           type="text"
           className="chatbox-input"
           placeholder="메시지 입력..."
+          ref={inputRef}
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
           maxLength={200}
-          disabled={isSending}
+          /* * 핵심 수정 사항:
+           * disabled={isSending} 속성을 제거했어!
+           * 이제 전송 중에도 인풋이 비활성화되지 않아 브라우저가 포커스를 강제로 해제하지 않아.
+           */
         />
         <button
           className="chatbox-send-btn"

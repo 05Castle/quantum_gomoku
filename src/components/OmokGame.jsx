@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/gameStore';
 import { subscribeToRoom, sendGameAction } from '../services/roomService';
@@ -20,6 +20,11 @@ const OmokGame = () => {
   const navigate = useNavigate();
 
   const [opponentLeft, setOpponentLeft] = React.useState(false);
+
+  // Ver 1.3: 착수 위치 팝업용 상태
+  const [placedCell, setPlacedCell] = React.useState(null);
+  const [showPopup, setShowPopup] = React.useState(false);
+  const autoPassTimerRef = useRef(null);
 
   const {
     board,
@@ -46,12 +51,11 @@ const OmokGame = () => {
     getMyRemainingChecks,
     canCheck,
     setOpponentCharacter,
-    setStoneColors, // Ver 1.3
+    setStoneColors,
   } = useGameStore();
 
   const [hoveredCell, setHoveredCell] = React.useState(null);
 
-  // 컴포넌트 마운트 시 플레이어 정보 설정
   useEffect(() => {
     if (location.state) {
       const {
@@ -62,7 +66,6 @@ const OmokGame = () => {
         playerRole,
         hostColor,
       } = location.state;
-
       setPlayerInfo(
         myNickname,
         playerRole,
@@ -71,15 +74,9 @@ const OmokGame = () => {
         myCharacter || 0,
         opponentCharacter || 0
       );
-
-      if (opponentCharacter !== undefined) {
+      if (opponentCharacter !== undefined)
         setOpponentCharacter(opponentCharacter);
-      }
-
-      // Ver 1.3: 돌 색상 설정
-      if (hostColor) {
-        setStoneColors(hostColor);
-      }
+      if (hostColor) setStoneColors(hostColor);
     }
   }, [
     location.state,
@@ -89,15 +86,12 @@ const OmokGame = () => {
     setStoneColors,
   ]);
 
-  // 방 구독 시작
   useEffect(() => {
     let unsubscribe = null;
-
     if (roomId && playerRole) {
       unsubscribe = subscribeToRoom(roomId, handleRoomUpdate, handleRoomError);
       setConnectionState(true);
     }
-
     return () => {
       if (unsubscribe) {
         unsubscribe();
@@ -106,6 +100,29 @@ const OmokGame = () => {
     };
   }, [roomId, playerRole]);
 
+  // 턴이 넘어가면 팝업 초기화
+  useEffect(() => {
+    if (!hasPlacedStone) {
+      setPlacedCell(null);
+      setShowPopup(false);
+    }
+  }, [hasPlacedStone]);
+
+  // 게임 리셋 시 팝업 초기화
+  useEffect(() => {
+    if (!gameOver) {
+      setPlacedCell(null);
+      setShowPopup(false);
+    }
+  }, [gameOver]);
+
+  // 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (autoPassTimerRef.current) clearTimeout(autoPassTimerRef.current);
+    };
+  }, []);
+
   const playSound = (soundFile) => {
     try {
       const audio = new Audio(`/sounds/${soundFile}`);
@@ -113,15 +130,13 @@ const OmokGame = () => {
     } catch (error) {}
   };
 
-  // 방 업데이트 처리
   const handleRoomUpdate = (roomData) => {
     if (
       playerRole === 'guest' &&
       roomData.status === 'waiting' &&
       !roomData.guestNickname
-    ) {
+    )
       return;
-    }
 
     if (playerRole === 'host') {
       if (
@@ -134,7 +149,6 @@ const OmokGame = () => {
       }
     }
 
-    // 상대방 캐릭터 정보 업데이트
     if (
       roomData.hostCharacter !== undefined &&
       roomData.guestCharacter !== undefined
@@ -146,26 +160,19 @@ const OmokGame = () => {
       setOpponentCharacter(opponentCharacterIndex);
     }
 
-    // Ver 1.3: 새 게임 시작 시 색상 재배정 감지
-    if (roomData.hostColor) {
-      setStoneColors(roomData.hostColor);
-    }
+    if (roomData.hostColor) setStoneColors(roomData.hostColor);
 
-    // 상대방의 게임 액션 처리
     if (roomData.currentAction) {
       const action = roomData.currentAction;
-      if (action.sender !== playerRole) {
-        processReceivedAction(action);
-      }
+      if (action.sender !== playerRole) processReceivedAction(action);
     }
   };
 
   const handleRoomError = (error) => {
     console.error('게임 중 방 에러:', error);
     setConnectionState(false);
-    if (error.includes('삭제') || error.includes('찾을 수 없습니다')) {
+    if (error.includes('삭제') || error.includes('찾을 수 없습니다'))
       setOpponentLeft(true);
-    }
   };
 
   const currentTurn = getCurrentTurn();
@@ -204,11 +211,15 @@ const OmokGame = () => {
         stoneInfo.player === 'black' ? 'black-confirmed' : 'white-confirmed'
       );
     } else {
-      if (stoneInfo.player === 'black') {
-        classes.push(stoneInfo.type === 90 ? 'black-90' : 'black-70');
-      } else {
-        classes.push(stoneInfo.type === 90 ? 'white-90' : 'white-70');
-      }
+      classes.push(
+        stoneInfo.player === 'black'
+          ? stoneInfo.type === 90
+            ? 'black-90'
+            : 'black-70'
+          : stoneInfo.type === 90
+            ? 'white-90'
+            : 'white-70'
+      );
     }
     return classes.join(' ');
   };
@@ -222,6 +233,8 @@ const OmokGame = () => {
       const actionData = placeStone(row, col);
       if (actionData) {
         sendGameAction(roomId, { ...actionData, sender: playerRole });
+        setPlacedCell({ row, col });
+        setShowPopup(true);
       }
     },
     [
@@ -241,6 +254,19 @@ const OmokGame = () => {
     const actionData = executeCheck();
     if (actionData) {
       sendGameAction(roomId, { ...actionData, sender: playerRole });
+      setShowPopup(false);
+
+      // 승부가 나지 않은 경우에만 2초 후 자동 턴 넘김
+      if (!actionData.gameOver) {
+        autoPassTimerRef.current = setTimeout(() => {
+          const state = useGameStore.getState();
+          if (state.gameOver) return; // 혹시 모를 중복 방지
+          const passData = state.passTurn();
+          if (passData) {
+            sendGameAction(roomId, { ...passData, sender: playerRole });
+          }
+        }, 2000);
+      }
     }
   };
 
@@ -249,11 +275,13 @@ const OmokGame = () => {
     const actionData = passTurn();
     if (actionData) {
       sendGameAction(roomId, { ...actionData, sender: playerRole });
+      setShowPopup(false);
     }
   };
 
   const handleResetGame = () => {
     playSound('start.mp3');
+    if (autoPassTimerRef.current) clearTimeout(autoPassTimerRef.current);
     resetGame();
     sendGameAction(roomId, {
       action: GAME_ACTIONS.RESET_GAME,
@@ -262,17 +290,41 @@ const OmokGame = () => {
     });
   };
 
-  // Ver 1.3: myColor 기준으로 현재 플레이어 닉네임 표시
   const getCurrentPlayerDisplay = () => {
     if (currentTurn.player === myColor) return myNickname;
     return opponentNickname;
   };
 
-  // Ver 1.3: myColor 기준으로 승리자 닉네임 표시
   const getWinnerDisplay = () => {
     if (winner === 'draw') return '무승부!';
     if (winner === myColor) return myNickname;
     return opponentNickname;
+  };
+
+  // 팝업 위치 계산 (보드 가장자리 처리)
+  const getCellSize = () => (window.innerWidth > 1749 ? 60 : 38);
+
+  const getPopupPosition = (row, col) => {
+    const cellSize = getCellSize();
+    const popupWidth = 140;
+    const popupHeight = 52;
+
+    // 기본: 돌 아래에 표시
+    let top = (row + 1) * cellSize + 8;
+    let left = col * cellSize - popupWidth / 2 + cellSize / 2;
+
+    // 보드 하단 가장자리 → 돌 위에 표시
+    if (row >= BOARD_SIZE - 3) {
+      top = row * cellSize - popupHeight - 8;
+    }
+
+    // 좌우 가장자리 처리
+    if (left < 0) left = 0;
+    const boardPixelWidth = BOARD_SIZE * cellSize;
+    if (left + popupWidth > boardPixelWidth)
+      left = boardPixelWidth - popupWidth;
+
+    return { top, left };
   };
 
   const renderCell = (row, col) => {
@@ -330,6 +382,7 @@ const OmokGame = () => {
       <PlayerInfoBar />
       <ConnectionStatus opponentLeft={opponentLeft} />
 
+      {/* 상단 상태 표시 */}
       <div className="game-status">
         {gameOver ? (
           <>
@@ -352,38 +405,50 @@ const OmokGame = () => {
             </div>
           </>
         ) : (
-          <>
-            <div className="current-player">
-              {getCurrentPlayerDisplay()}님의 차례 -{' '}
-              {currentTurn.player === 'black' ? '⚫' : '⚪'} {currentTurn.type}
-              돌 ({currentTurn.type}% 확률)
-              {isCurrentlyMyTurn && (
-                <span className="my-turn-indicator"> (내 차례)</span>
-              )}
-            </div>
-            {hasPlacedStone && isCurrentlyMyTurn && (
-              <div className="btn-container">
-                <div
-                  className={`btn check-btn ${!canCheck() ? 'disabled' : ''} ${remainingChecks === 0 ? 'no-checks' : ''}`}
-                  onClick={canCheck() ? handleCheck : undefined}
-                >
-                  체크! ({remainingChecks}/4)
-                </div>
-                <div className="btn pass-btn" onClick={handlePass}>
-                  넘어가기!
-                </div>
-              </div>
+          <div className="current-player">
+            {getCurrentPlayerDisplay()}님의 차례 -{' '}
+            {currentTurn.player === 'black' ? '⚫' : '⚪'} {currentTurn.type}돌
+            ({currentTurn.type}% 확률)
+            {isCurrentlyMyTurn && (
+              <span className="my-turn-indicator"> (내 차례)</span>
             )}
-          </>
+          </div>
         )}
       </div>
 
-      <div
-        className="board"
-        style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
-      >
-        {board.map((row, rowIndex) =>
-          row.map((_, colIndex) => renderCell(rowIndex, colIndex))
+      {/* 보드판 + 인라인 팝업 래퍼 */}
+      <div className="board-wrapper">
+        <div
+          className="board"
+          style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
+        >
+          {board.map((row, rowIndex) =>
+            row.map((_, colIndex) => renderCell(rowIndex, colIndex))
+          )}
+        </div>
+
+        {/* Ver 1.3: 착수 후 인라인 액션 팝업 */}
+        {showPopup && placedCell && isCurrentlyMyTurn && !gameOver && (
+          <div
+            className="action-popup"
+            style={getPopupPosition(placedCell.row, placedCell.col)}
+          >
+            <button
+              className={`action-popup-btn check-popup-btn ${!canCheck() ? 'disabled' : ''}`}
+              onClick={canCheck() ? handleCheck : undefined}
+              title={`체크 (${remainingChecks}/4)`}
+            >
+              <span class="material-symbols-outlined">search</span>
+              <span className="popup-count">({remainingChecks}/4)</span>
+            </button>
+            <button
+              className="action-popup-btn pass-popup-btn"
+              onClick={handlePass}
+              title="넘어가기"
+            >
+              <span class="material-symbols-outlined">double_arrow</span>
+            </button>
+          </div>
         )}
       </div>
     </div>

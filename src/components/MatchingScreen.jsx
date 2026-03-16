@@ -39,8 +39,6 @@ const MatchingScreen = () => {
   const [currentPlayerRole, setCurrentPlayerRole] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [unsubscribeRoom, setUnsubscribeRoom] = useState(null);
-
-  // Ver 1.3: 호스트 색상 저장용
   const [hostColor, setHostColor] = useState(null);
 
   const handleNicknameSubmit = () => {
@@ -54,7 +52,18 @@ const MatchingScreen = () => {
     }
     setPlayerInfo(inputNickname, null, '', '', myCharacter);
     setErrorMessage('');
+    setMatchingState('mode-select'); // 닉네임 확인 후 모드 선택으로
+  };
+
+  // 모드 선택
+  const handleSelect2P = () => {
     setMatchingState('matching');
+  };
+
+  const handleSelect3P = () => {
+    navigate('/matching3p', {
+      state: { myNickname, myCharacter },
+    });
   };
 
   useEffect(() => {
@@ -74,7 +83,7 @@ const MatchingScreen = () => {
       if (result.success) {
         setCurrentRoomId(result.roomId);
         setCurrentPlayerRole('host');
-        setHostColor(result.hostColor); // Ver 1.3: hostColor 저장
+        setHostColor(result.hostColor);
 
         setPlayerInfo(myNickname, 'host', result.roomId, '', myCharacter);
         setMatchingState('waiting');
@@ -115,11 +124,8 @@ const MatchingScreen = () => {
         setCurrentPlayerRole('guest');
 
         setPlayerInfo(
-          myNickname,
-          'guest',
-          roomIdUpper,
-          result.roomData.hostNickname,
-          myCharacter,
+          myNickname, 'guest', roomIdUpper,
+          result.roomData.hostNickname, myCharacter,
           result.roomData.hostCharacter
         );
         setOpponentCharacter(result.roomData.hostCharacter);
@@ -128,23 +134,15 @@ const MatchingScreen = () => {
         const unsubscribe = subscribeToRoom(
           roomIdUpper,
           (roomData) =>
-            handleRoomUpdate(
-              roomData,
-              roomIdUpper,
-              'guest',
-              result.roomData.hostColor
-            ),
+            handleRoomUpdate(roomData, roomIdUpper, 'guest', result.roomData.hostColor),
           handleRoomError
         );
         setUnsubscribeRoom(() => unsubscribe);
 
         setTimeout(() => {
           startGame(
-            result.roomData.hostNickname,
-            roomIdUpper,
-            'guest',
-            result.roomData.hostCharacter,
-            result.roomData.hostColor // Ver 1.3: hostColor 전달
+            result.roomData.hostNickname, roomIdUpper, 'guest',
+            result.roomData.hostCharacter, result.roomData.hostColor
           );
         }, 1000);
       } else {
@@ -157,25 +155,12 @@ const MatchingScreen = () => {
     setIsLoading(false);
   };
 
-  // 방 업데이트 처리
-  const handleRoomUpdate = (
-    roomData,
-    gameRoomId,
-    gamePlayerRole,
-    currentHostColor
-  ) => {
-    if (
-      gamePlayerRole === 'host' &&
-      roomData.guestNickname &&
-      roomData.status === 'playing'
-    ) {
+  const handleRoomUpdate = (roomData, gameRoomId, gamePlayerRole, currentHostColor) => {
+    if (gamePlayerRole === 'host' && roomData.guestNickname && roomData.status === 'playing') {
       setOpponentCharacter(roomData.guestCharacter || 0);
       startGame(
-        roomData.guestNickname,
-        gameRoomId,
-        gamePlayerRole,
-        roomData.guestCharacter,
-        currentHostColor || roomData.hostColor // Ver 1.3: hostColor 전달
+        roomData.guestNickname, gameRoomId, gamePlayerRole,
+        roomData.guestCharacter, currentHostColor || roomData.hostColor
       );
     }
 
@@ -197,13 +182,9 @@ const MatchingScreen = () => {
     }
   };
 
-  // Ver 1.3: hostColor 파라미터 추가
   const startGame = (
-    opponentName,
-    gameRoomId,
-    gamePlayerRole,
-    opponentCharacterIndex = 0,
-    gameHostColor = null
+    opponentName, gameRoomId, gamePlayerRole,
+    opponentCharacterIndex = 0, gameHostColor = null
   ) => {
     setOpponentNickname(opponentName);
     setOpponentCharacter(opponentCharacterIndex);
@@ -212,13 +193,12 @@ const MatchingScreen = () => {
 
     navigate(`/game/${gameRoomId}`, {
       state: {
-        myNickname,
-        myCharacter,
+        myNickname, myCharacter,
         opponentNickname: opponentName,
         opponentCharacter: opponentCharacterIndex,
         playerRole: gamePlayerRole,
         roomId: gameRoomId,
-        hostColor: gameHostColor, // Ver 1.3: hostColor 전달
+        hostColor: gameHostColor,
       },
     });
   };
@@ -263,13 +243,7 @@ const MatchingScreen = () => {
             <div className="character-selection">
               <p>캐릭터를 선택하세요</p>
               <div className="character-selector">
-                <button
-                  className="character-arrow left"
-                  onClick={prevCharacter}
-                  type="button"
-                >
-                  ◀
-                </button>
+                <button className="character-arrow left" onClick={prevCharacter} type="button">◀</button>
                 <div className="character-display">
                   <img
                     src={getCharacterImage(myCharacter)}
@@ -277,13 +251,7 @@ const MatchingScreen = () => {
                     className="character-image"
                   />
                 </div>
-                <button
-                  className="character-arrow right"
-                  onClick={nextCharacter}
-                  type="button"
-                >
-                  ▶
-                </button>
+                <button className="character-arrow right" onClick={nextCharacter} type="button">▶</button>
               </div>
             </div>
 
@@ -308,26 +276,45 @@ const MatchingScreen = () => {
           </div>
         )}
 
-        {/* 매칭 선택 화면 */}
+        {/* 모드 선택 화면 */}
+        {matchingState === 'mode-select' && (
+          <div className="mode-select-section">
+            <div className="player-info">
+              <div className="player-info-with-character">
+                <img src={getCharacterImage(myCharacter)} alt="내 캐릭터" className="player-character-small" />
+                <span className="nickname-display">👤 {myNickname}</span>
+              </div>
+            </div>
+
+            <h2>모드를 선택하세요</h2>
+
+            <div className="button-group">
+              <button className="btn mode-btn mode-2p-btn" onClick={handleSelect2P}>
+                👥 2인 모드
+              </button>
+              <button className="btn mode-btn mode-3p-btn" onClick={handleSelect3P}>
+                👥👤 3인 모드
+              </button>
+            </div>
+
+            <button className="btn back-btn" onClick={handleEditNickname}>
+              ← 닉네임 수정
+            </button>
+          </div>
+        )}
+
+        {/* 매칭 선택 화면 (2인) */}
         {matchingState === 'matching' && (
           <div className="matching-section">
             <div className="player-info">
               <div className="player-info-with-character">
-                <img
-                  src={getCharacterImage(myCharacter)}
-                  alt="내 캐릭터"
-                  className="player-character-small"
-                />
+                <img src={getCharacterImage(myCharacter)} alt="내 캐릭터" className="player-character-small" />
                 <span className="nickname-display">👤 {myNickname}</span>
               </div>
             </div>
 
             <div className="button-group">
-              <button
-                className="btn create-btn"
-                onClick={handleCreateRoom}
-                disabled={isLoading}
-              >
+              <button className="btn create-btn" onClick={handleCreateRoom} disabled={isLoading}>
                 🏠 방 만들기
               </button>
               <div className="join-section">
@@ -349,8 +336,8 @@ const MatchingScreen = () => {
               </div>
             </div>
 
-            <button className="btn back-btn" onClick={handleEditNickname}>
-              ← 닉네임 수정
+            <button className="btn back-btn" onClick={() => setMatchingState('mode-select')}>
+              ← 모드 선택
             </button>
           </div>
         )}
@@ -360,11 +347,7 @@ const MatchingScreen = () => {
           <div className="waiting-section">
             <div className="player-info">
               <div className="player-info-with-character">
-                <img
-                  src={getCharacterImage(myCharacter)}
-                  alt="내 캐릭터"
-                  className="player-character-small"
-                />
+                <img src={getCharacterImage(myCharacter)} alt="내 캐릭터" className="player-character-small" />
                 <span className="nickname-display">👤 {myNickname} (방장)</span>
               </div>
             </div>
@@ -375,17 +358,11 @@ const MatchingScreen = () => {
               <div className="room-id-display">
                 <span>방 ID: </span>
                 <strong>{roomId}</strong>
-                <button
-                  className="copy-btn"
-                  onClick={copyRoomId}
-                  disabled={isCopied}
-                >
+                <button className="copy-btn" onClick={copyRoomId} disabled={isCopied}>
                   {isCopied ? '✅' : '📋'}
                 </button>
               </div>
-              <p className="room-instruction">
-                위 방 ID를 친구에게 알려주세요!
-              </p>
+              <p className="room-instruction">위 방 ID를 친구에게 알려주세요!</p>
             </div>
 
             <div className="loading-indicator">
@@ -393,9 +370,7 @@ const MatchingScreen = () => {
               <span>상대방 접속 대기중...</span>
             </div>
 
-            <button className="btn back-btn" onClick={handleGoBack}>
-              ← 뒤로가기
-            </button>
+            <button className="btn back-btn" onClick={handleGoBack}>← 뒤로가기</button>
           </div>
         )}
 
@@ -404,11 +379,7 @@ const MatchingScreen = () => {
           <div className="connecting-section">
             <div className="player-info">
               <div className="player-info-with-character">
-                <img
-                  src={getCharacterImage(myCharacter)}
-                  alt="내 캐릭터"
-                  className="player-character-small"
-                />
+                <img src={getCharacterImage(myCharacter)} alt="내 캐릭터" className="player-character-small" />
                 <span className="nickname-display">👤 {myNickname}</span>
               </div>
             </div>
@@ -416,9 +387,7 @@ const MatchingScreen = () => {
             <h2>게임에 접속 중...</h2>
 
             <div className="room-info">
-              <div className="room-id-display">
-                방 ID: <strong>{roomId}</strong>
-              </div>
+              <div className="room-id-display">방 ID: <strong>{roomId}</strong></div>
             </div>
 
             <div className="loading-indicator">
@@ -426,9 +395,7 @@ const MatchingScreen = () => {
               <span>게임 연결중...</span>
             </div>
 
-            <button className="btn back-btn" onClick={handleGoBack}>
-              ← 뒤로가기
-            </button>
+            <button className="btn back-btn" onClick={handleGoBack}>← 뒤로가기</button>
           </div>
         )}
 

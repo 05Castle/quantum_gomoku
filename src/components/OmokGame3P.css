@@ -1,0 +1,116 @@
+/* OmokGame3P.css */
+/* 기본 레이아웃은 OmokGame.css를 그대로 활용하고
+   3인 모드에서 추가/변경되는 스타일만 정의합니다 */
+
+@import './OmokGame.css';
+
+/* === 3인 플레이어 정보 바 === */
+.player-info-bar-3p {
+  right: 20px;
+  top: 5%;
+  min-width: 220px;
+}
+
+.player-info-bar-3p .player-card {
+  padding: 10px 15px;
+  gap: 8px;
+}
+
+.player-info-bar-3p .character-avatar {
+  width: 80px;
+  height: 80px;
+}
+
+.player-info-bar-3p .vs-divider {
+  font-size: 0.85rem;
+  padding: 4px 10px;
+}
+
+/* === 3인 돌 색상 === */
+
+/* 백돌 (white) */
+.stone.white-90 {
+  background-color: #f3f3f3;
+  color: #000;
+  border: 2px solid #ccc;
+}
+
+.stone.white-70 {
+  background-color: #e2e2e2;
+  color: #000;
+  border: 2px solid #ccc;
+}
+
+.stone.white-confirmed {
+  background-color: #ffffff;
+  color: #000;
+  border: 2px solid #999;
+}
+
+/* 청돌 (blue) */
+.stone.blue-90 {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+.stone.blue-70 {
+  background-color: #93c5fd;
+  color: #1e3a8a;
+}
+
+.stone.blue-confirmed {
+  background-color: #1d4ed8;
+  color: #fff;
+}
+
+/* 적돌 (red) */
+.stone.red-90 {
+  background-color: #ef4444;
+  color: #fff;
+}
+
+.stone.red-70 {
+  background-color: #fca5a5;
+  color: #7f1d1d;
+}
+
+.stone.red-confirmed {
+  background-color: #b91c1c;
+  color: #fff;
+}
+
+/* === 플레이어 카드 테두리 색상 === */
+.white-player .character-avatar {
+  border-color: #ccc;
+}
+
+.blue-player .character-avatar {
+  border-color: #3b82f6;
+}
+
+.red-player .character-avatar {
+  border-color: #ef4444;
+}
+
+/* === 반응형 === */
+@media (max-width: 1749px) {
+  .player-info-bar-3p {
+    right: 10px;
+    min-width: 160px;
+    top: 3%;
+  }
+
+  .player-info-bar-3p .character-avatar {
+    width: 55px;
+    height: 55px;
+  }
+
+  .player-info-bar-3p .player-card {
+    padding: 8px 10px;
+    gap: 5px;
+  }
+
+  .player-info-bar-3p .player-name {
+    font-size: 0.8rem;
+  }
+}

@@ -513,3 +513,81 @@ input:focus-visible {
     transform: scale(1);
   }
 }
+
+/* === M3: 모드 선택 버튼 === */
+.mode-btn {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 18px 24px;
+}
+
+.mode-2p-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.mode-2p-btn:not(:disabled):hover {
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.mode-3p-btn {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  color: white;
+}
+
+.mode-3p-btn:not(:disabled):hover {
+  box-shadow: 0 8px 25px rgba(247, 151, 30, 0.3);
+}
+
+/* === M3: 3인 모드 매칭 화면 === */
+.mode-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  color: white;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.players-status {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.players-count {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player-slot {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.player-slot.filled {
+  background: white;
+  color: #333;
+  border: 1px solid #dee2e6;
+}
+
+.player-slot.empty {
+  background: #f1f3f5;
+  color: #aaa;
+  border: 1px dashed #dee2e6;
+}

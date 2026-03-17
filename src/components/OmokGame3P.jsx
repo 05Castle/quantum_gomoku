@@ -22,13 +22,15 @@ const OmokGame3P = () => {
   const navigate = useNavigate();
 
   const [opponentLeft, setOpponentLeft] = React.useState(false);
+  const [showLeaveModal, setShowLeaveModal] = React.useState(false);
   const [placedCell, setPlacedCell] = React.useState(null);
   const [showPopup, setShowPopup] = React.useState(false);
   const autoPassTimerRef = useRef(null);
 
-  // 마지막으로 처리한 actionId와 resetSignal을 ref로 추적
+  // 마지막으로 처리한 actionId, resetSignal, playerLeftSignal을 ref로 추적
   const lastProcessedActionId = useRef(null);
   const lastProcessedResetSignal = useRef(null);
+  const lastPlayerLeftSignal = useRef(null);
 
   const {
     board,
@@ -136,33 +138,34 @@ const OmokGame3P = () => {
   };
 
   const handleRoomUpdate = (roomData) => {
-    // 플레이어 정보 업데이트
     updatePlayersFromRoom(roomData);
 
-    // 상대방 나감 감지
-    if (playerRole !== 'host') {
-      if (roomData.currentPlayerCount < 3 && roomData.status !== 'playing') {
+    const currentPlayerRole = useGameStore3P.getState().playerRole;
+
+    // === 게스트 나감 감지 (playerLeftSignal) ===
+    if (
+      roomData.playerLeftSignal &&
+      roomData.playerLeftSignal !== lastPlayerLeftSignal.current
+    ) {
+      lastPlayerLeftSignal.current = roomData.playerLeftSignal;
+      const whoLeft = roomData.playerLeftSignal.split('_')[0]; // 'player2' or 'player3'
+      // 나간 사람이 나 자신이 아닌 경우에만 알람
+      if (whoLeft !== currentPlayerRole) {
         setOpponentLeft(true);
         return;
       }
     }
 
-    const currentPlayerRole = useGameStore3P.getState().playerRole;
-
     // === 리셋 신호 처리 ===
-    // resetSignal이 새 값이면 리셋 실행 (리셋한 플레이어 제외)
     if (
       roomData.resetSignal &&
       roomData.resetSignal !== lastProcessedResetSignal.current
     ) {
       lastProcessedResetSignal.current = roomData.resetSignal;
-      // 리셋한 플레이어는 이미 로컬에서 직접 리셋했으므로 제외
-      // lastAction이 null이면 리셋 신호임
       if (!roomData.lastAction) {
-        // 내가 보낸 리셋이 아닌 경우에만 처리
-        // (내가 보낸 경우는 handleResetGame에서 직접 처리)
         resetGame3P();
         lastProcessedActionId.current = null;
+        lastPlayerLeftSignal.current = null;
         playSound('start.mp3');
         return;
       }
@@ -173,16 +176,13 @@ const OmokGame3P = () => {
 
     const action = roomData.lastAction;
 
-    // 이미 처리한 액션이면 무시
     if (action.actionId === lastProcessedActionId.current) return;
 
-    // 내가 보낸 액션이면 무시
     if (action.sender === currentPlayerRole) {
       lastProcessedActionId.current = action.actionId;
       return;
     }
 
-    // 새 액션 처리
     lastProcessedActionId.current = action.actionId;
     processReceivedAction3P(action.actionId, action);
   };
@@ -190,6 +190,7 @@ const OmokGame3P = () => {
   const handleRoomError = (error) => {
     console.error('3인 게임 방 에러:', error);
     setConnectionState(false);
+    // 호스트가 나가서 방이 삭제된 경우
     if (error.includes('삭제') || error.includes('찾을 수 없습니다')) {
       setOpponentLeft(true);
     }
@@ -284,10 +285,10 @@ const OmokGame3P = () => {
   const handleResetGame = () => {
     playSound('start.mp3');
     if (autoPassTimerRef.current) clearTimeout(autoPassTimerRef.current);
-    // 리셋한 플레이어는 직접 리셋
     resetGame3P();
     lastProcessedActionId.current = null;
     lastProcessedResetSignal.current = null;
+    lastPlayerLeftSignal.current = null;
     sendGameAction3P(roomId, {
       action: GAME_ACTIONS_3P.RESET_GAME,
       sender: playerRole,
@@ -389,10 +390,41 @@ const OmokGame3P = () => {
       <div className="connection-status">
         <span className="connection-indicator connected">🟢 연결됨</span>
         <span className="room-id">방 ID: {roomId}</span>
-        <button className="btn back-btn" onClick={handleLeaveConfirm}>
+        <button
+          className="btn back-btn"
+          onClick={() => setShowLeaveModal(true)}
+        >
           나가기
         </button>
       </div>
+
+      {/* 나가기 확인 모달 */}
+      {showLeaveModal && (
+        <div className="modal-overlay" onClick={() => setShowLeaveModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">게임을 나가시겠습니까?</div>
+            <div className="modal-desc">
+              {playerRole === 'host'
+                ? '방이 삭제되고 다른 플레이어들도 로비로 이동됩니다.'
+                : '다른 플레이어들에게 알림이 전송됩니다.'}
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="modal-btn modal-btn-cancel"
+                onClick={() => setShowLeaveModal(false)}
+              >
+                취소
+              </button>
+              <button
+                className="modal-btn modal-btn-confirm"
+                onClick={handleLeaveConfirm}
+              >
+                나가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 상단 상태 표시 */}
       <div className="game-status">

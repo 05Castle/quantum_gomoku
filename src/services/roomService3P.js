@@ -48,13 +48,13 @@ export const createRoom3P = async (hostNickname, hostCharacter = 0) => {
       status: ROOM_STATUS_3P.WAITING,
       maxPlayers: 3,
       currentPlayerCount: 1,
-      // 2인 모드와 동일한 단일 필드 방식 (actionId로 중복 처리 방지)
       lastAction: null,
       currentTurnIndex: 0,
       hostCheckCount: 3,
       player2CheckCount: 3,
       player3CheckCount: 3,
       totalChecksUsed: 0,
+      playerLeftSignal: null,
       roomId,
     };
 
@@ -73,17 +73,13 @@ export const joinRoom3P = async (roomId, nickname, character = 0) => {
   try {
     const roomData = await getDocument('rooms3p', roomId);
 
-    if (!roomData)
-      return { success: false, error: '존재하지 않는 방 ID입니다.' };
+    if (!roomData) return { success: false, error: '존재하지 않는 방 ID입니다.' };
 
     if (
       roomData.status === ROOM_STATUS_3P.PLAYING ||
       roomData.status === ROOM_STATUS_3P.FINISHED
     ) {
-      return {
-        success: false,
-        error: '이미 게임이 진행 중이거나 종료된 방입니다.',
-      };
+      return { success: false, error: '이미 게임이 진행 중이거나 종료된 방입니다.' };
     }
 
     if (roomData.currentPlayerCount >= roomData.maxPlayers) {
@@ -130,8 +126,6 @@ export const joinRoom3P = async (roomId, nickname, character = 0) => {
 
 /**
  * 게임 액션 전송
- * - lastAction 단일 필드 방식 (2인 모드와 동일한 구조)
- * - actionId(timestamp)로 중복 처리 방지
  */
 export const sendGameAction3P = async (roomId, actionData) => {
   try {
@@ -169,15 +163,15 @@ export const sendGameAction3P = async (roomId, actionData) => {
     }
 
     if (actionData.action === 'reset_game') {
-      updateData.lastAction = null; // 리셋 시 lastAction 초기화
+      updateData.lastAction = null;
       updateData.currentTurnIndex = 0;
       updateData.status = ROOM_STATUS_3P.PLAYING;
       updateData.hostCheckCount = 3;
       updateData.player2CheckCount = 3;
       updateData.player3CheckCount = 3;
       updateData.totalChecksUsed = 0;
-      // 리셋 신호를 별도 필드로 전달
       updateData.resetSignal = ts;
+      updateData.playerLeftSignal = null; // 리셋 시 나감 신호 초기화
     }
 
     if (actionData.action === 'check' && actionData.gameOver) {
@@ -217,6 +211,8 @@ export const subscribeToRoom3P = (roomId, onRoomUpdate, onError) => {
 
 /**
  * 3인 방 나가기
+ * - 호스트: 방 삭제 → handleRoomError에서 감지
+ * - 게스트: playerLeftSignal로 나머지 플레이어에게 신호 전달
  */
 export const leaveRoom3P = async (roomId, playerRole) => {
   try {
@@ -231,12 +227,14 @@ export const leaveRoom3P = async (roomId, playerRole) => {
         [`${playerRole}Character`]: 0,
         [`${playerRole}Connected`]: false,
         currentPlayerCount: roomData.currentPlayerCount - 1,
-        status: ROOM_STATUS_3P.WAITING_THIRD,
+        // status는 변경하지 않음 - playing 유지해야 감지 가능
         lastAction: null,
         hostCheckCount: 3,
         player2CheckCount: 3,
         player3CheckCount: 3,
         totalChecksUsed: 0,
+        // 나간 플레이어 정보를 신호로 전달
+        playerLeftSignal: `${playerRole}_${Date.now()}`,
       });
     }
 
@@ -250,11 +248,7 @@ export const leaveRoom3P = async (roomId, playerRole) => {
 /**
  * 연결 상태 업데이트
  */
-export const updateConnectionStatus3P = async (
-  roomId,
-  playerRole,
-  connected
-) => {
+export const updateConnectionStatus3P = async (roomId, playerRole, connected) => {
   try {
     const field = `${playerRole}Connected`;
     await updateDocument('rooms3p', roomId, { [field]: connected });

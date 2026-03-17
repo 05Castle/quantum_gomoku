@@ -7,6 +7,7 @@ const PlayerInfoBar3P = () => {
     player2Nickname,
     player3Nickname,
     myCharacter,
+    hostCharacter,
     player2Character,
     player3Character,
     playerRole,
@@ -20,7 +21,8 @@ const PlayerInfoBar3P = () => {
     return isWinner ? `${base}-win.png` : `${base}.png`;
   };
 
-  const hostCharacterIndex = playerRole === 'host' ? myCharacter : 0;
+  const hostCharacterIndex =
+    playerRole === 'host' ? myCharacter : hostCharacter;
   const p2CharacterIndex =
     playerRole === 'player2' ? myCharacter : player2Character;
   const p3CharacterIndex =

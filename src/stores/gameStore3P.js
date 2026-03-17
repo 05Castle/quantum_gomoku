@@ -72,6 +72,7 @@ export const useGameStore3P = create((set, get) => ({
 
   // 캐릭터
   myCharacter: DEFAULT_CHARACTER,
+  hostCharacter: DEFAULT_CHARACTER,
   player2Character: DEFAULT_CHARACTER,
   player3Character: DEFAULT_CHARACTER,
 
@@ -116,6 +117,7 @@ export const useGameStore3P = create((set, get) => ({
   updatePlayersFromRoom: (roomData) => {
     set({
       hostNickname: roomData.hostNickname || '',
+      hostCharacter: roomData.hostCharacter ?? DEFAULT_CHARACTER,
       player2Nickname: roomData.player2Nickname || '',
       player3Nickname: roomData.player3Nickname || '',
       player2Character: roomData.player2Character ?? DEFAULT_CHARACTER,

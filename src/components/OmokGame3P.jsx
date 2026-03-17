@@ -27,7 +27,6 @@ const OmokGame3P = () => {
   const [showPopup, setShowPopup] = React.useState(false);
   const autoPassTimerRef = useRef(null);
 
-  // 마지막으로 처리한 actionId, resetSignal, playerLeftSignal을 ref로 추적
   const lastProcessedActionId = useRef(null);
   const lastProcessedResetSignal = useRef(null);
   const lastPlayerLeftSignal = useRef(null);
@@ -108,7 +107,6 @@ const OmokGame3P = () => {
     };
   }, [roomId, playerRole]);
 
-  // 턴 넘어가면 팝업 초기화
   useEffect(() => {
     if (!hasPlacedStone) {
       setPlacedCell(null);
@@ -116,7 +114,6 @@ const OmokGame3P = () => {
     }
   }, [hasPlacedStone]);
 
-  // 게임 리셋 시 팝업 초기화
   useEffect(() => {
     if (!gameOver) {
       setPlacedCell(null);
@@ -142,21 +139,18 @@ const OmokGame3P = () => {
 
     const currentPlayerRole = useGameStore3P.getState().playerRole;
 
-    // === 게스트 나감 감지 (playerLeftSignal) ===
     if (
       roomData.playerLeftSignal &&
       roomData.playerLeftSignal !== lastPlayerLeftSignal.current
     ) {
       lastPlayerLeftSignal.current = roomData.playerLeftSignal;
-      const whoLeft = roomData.playerLeftSignal.split('_')[0]; // 'player2' or 'player3'
-      // 나간 사람이 나 자신이 아닌 경우에만 알람
+      const whoLeft = roomData.playerLeftSignal.split('_')[0];
       if (whoLeft !== currentPlayerRole) {
         setOpponentLeft(true);
         return;
       }
     }
 
-    // === 리셋 신호 처리 ===
     if (
       roomData.resetSignal &&
       roomData.resetSignal !== lastProcessedResetSignal.current
@@ -171,7 +165,6 @@ const OmokGame3P = () => {
       }
     }
 
-    // === lastAction 처리 ===
     if (!roomData.lastAction) return;
 
     const action = roomData.lastAction;
@@ -190,7 +183,6 @@ const OmokGame3P = () => {
   const handleRoomError = (error) => {
     console.error('3인 게임 방 에러:', error);
     setConnectionState(false);
-    // 호스트가 나가서 방이 삭제된 경우
     if (error.includes('삭제') || error.includes('찾을 수 없습니다')) {
       setOpponentLeft(true);
     }
@@ -211,6 +203,15 @@ const OmokGame3P = () => {
   const isCurrentlyMyTurn = isMyTurn3P();
   const remainingChecks = getMyRemainingChecks3P();
 
+  // TURN_SEQUENCE_3P에서 type 값을 자동으로 읽어 high 기준값 결정
+  // 두 종류의 type 중 큰 쪽이 high, 작은 쪽이 low
+  const HIGH_THRESHOLD = (() => {
+    const types = TURN_SEQUENCE_3P.map((t) => t.type);
+    const unique = [...new Set(types)].sort((a, b) => a - b);
+    return unique.length >= 2 ? unique[unique.length - 1] : 90;
+  })();
+
+  // type 숫자에 무관하게 high/low로만 CSS 클래스 결정
   const getStoneClasses = (stoneInfo, isPreview = false) => {
     if (!stoneInfo) return '';
     let classes = ['stone'];
@@ -218,7 +219,8 @@ const OmokGame3P = () => {
     if (stoneInfo.confirmed) {
       classes.push(`${stoneInfo.player}-confirmed`);
     } else {
-      classes.push(`${stoneInfo.player}-${stoneInfo.type}`);
+      const level = stoneInfo.type >= HIGH_THRESHOLD ? 'high' : 'low';
+      classes.push(`${stoneInfo.player}-${level}`);
     }
     return classes.join(' ');
   };
@@ -301,6 +303,26 @@ const OmokGame3P = () => {
     if (color === 'white') return '⚪';
     if (color === 'blue') return '🔵';
     return '🔴';
+  };
+
+  // 현재 턴 돌의 차등 확률 문자열 반환
+  // ex) ⚪60% / 🔵25% / 🔴15%
+  const getProbabilityDisplay = (player, type) => {
+    const PLAYER_COLORS = ['white', 'blue', 'red'];
+    const idx = PLAYER_COLORS.indexOf(player);
+    const next = PLAYER_COLORS[(idx + 1) % 3];
+    const nextNext = PLAYER_COLORS[(idx + 2) % 3];
+
+    const FAIL_DIST = {
+      60: { next: 25, nextNext: 15 },
+      85: { next: 10, nextNext: 5 },
+    };
+    const dist = FAIL_DIST[type] ?? {
+      next: Math.round((100 - type) * 0.625),
+      nextNext: Math.round((100 - type) * 0.375),
+    };
+
+    return `${getColorEmoji(player)}${type}% / ${getColorEmoji(next)}${dist.next}% / ${getColorEmoji(nextNext)}${dist.nextNext}%`;
   };
 
   const getCurrentPlayerDisplay = () => {
@@ -452,7 +474,7 @@ const OmokGame3P = () => {
           <div className="current-player">
             {getCurrentPlayerDisplay()}님의 차례 -{' '}
             {getColorEmoji(currentTurn.player)} {currentTurn.type}돌 (
-            {currentTurn.type}% 확률)
+            {getProbabilityDisplay(currentTurn.player, currentTurn.type)})
             {isCurrentlyMyTurn && (
               <span className="my-turn-indicator"> (내 차례)</span>
             )}
@@ -479,10 +501,10 @@ const OmokGame3P = () => {
             <button
               className={`action-popup-btn check-popup-btn ${!canCheck3P() ? 'disabled' : ''}`}
               onClick={canCheck3P() ? handleCheck : undefined}
-              title={`체크 (${remainingChecks}/3)`}
+              title={`체크 (${remainingChecks}/4)`}
             >
               <span className="material-symbols-outlined">search</span>
-              <span className="popup-count">({remainingChecks}/3)</span>
+              <span className="popup-count">({remainingChecks}/4)</span>
             </button>
             <button
               className="action-popup-btn pass-popup-btn"

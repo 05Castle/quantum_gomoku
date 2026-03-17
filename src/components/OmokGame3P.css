@@ -26,16 +26,18 @@
   padding: 4px 10px;
 }
 
-/* === 3인 돌 색상 === */
+/* === 3인 돌 색상 ===
+   확률 숫자와 무관하게 high(큰 확률) / low(작은 확률)로만 구분합니다.
+   수치를 바꿔도 이 CSS는 건드릴 필요 없습니다. */
 
 /* 백돌 (white) */
-.stone.white-90 {
+.stone.white-high {
   background-color: #f3f3f3;
   color: #000;
   border: 2px solid #ccc;
 }
 
-.stone.white-70 {
+.stone.white-low {
   background-color: #e2e2e2;
   color: #000;
   border: 2px solid #ccc;
@@ -48,12 +50,12 @@
 }
 
 /* 청돌 (blue) */
-.stone.blue-90 {
+.stone.blue-high {
   background-color: #3b82f6;
   color: #fff;
 }
 
-.stone.blue-70 {
+.stone.blue-low {
   background-color: #93c5fd;
   color: #1e3a8a;
 }
@@ -64,12 +66,12 @@
 }
 
 /* 적돌 (red) */
-.stone.red-90 {
+.stone.red-high {
   background-color: #ef4444;
   color: #fff;
 }
 
-.stone.red-70 {
+.stone.red-low {
   background-color: #fca5a5;
   color: #7f1d1d;
 }

@@ -4,13 +4,13 @@ import { create } from 'zustand';
 const BOARD_SIZE = 13;
 const EMPTY = 0;
 
-// 돌 값 상수 (미확정)
-const WHITE_90 = 1;
-const WHITE_70 = 2;
-const BLUE_90 = 3;
-const BLUE_70 = 4;
-const RED_90 = 5;
-const RED_70 = 6;
+// 돌 값 상수 (미확정) - 보드에 저장되는 숫자값, 확률과 무관
+const WHITE_HIGH = 1;
+const WHITE_LOW = 2;
+const BLUE_HIGH = 3;
+const BLUE_LOW = 4;
+const RED_HIGH = 5;
+const RED_LOW = 6;
 
 // 돌 값 상수 (확정)
 const WHITE_CONFIRMED = 7;
@@ -20,14 +20,34 @@ const RED_CONFIRMED = 9;
 // 플레이어 색상
 const PLAYER_COLORS = ['white', 'blue', 'red'];
 
-// 턴 시퀀스: 첫번째(white), 두번째(blue)는 70돌, 세번째(red)는 90돌로 시작
+// 돌 확률 수치 - 이 두 줄만 수정하면 전체 적용됨
+const TYPE_LOW = 60;
+const TYPE_HIGH = 85;
+
+// 차등 확률 분배 헬퍼
+// PLAYER_COLORS 순서 기준: white→blue→red→white...
+// 돌을 놓은 플레이어의 다음턴 플레이어가 더 높은 확률로 득을 봄
+// low(60): 자기60 / 다음턴25 / 다다음턴15
+// high(85): 자기85 / 다음턴10 / 다다음턴5
+const getNextColors = (player) => {
+  const idx = PLAYER_COLORS.indexOf(player);
+  const next = PLAYER_COLORS[(idx + 1) % 3];
+  const nextNext = PLAYER_COLORS[(idx + 2) % 3];
+  return { next, nextNext };
+};
+
+const FAIL_DIST = {
+  [TYPE_LOW]: { next: 25, nextNext: 15 }, // 합계 40 (자기 60)
+  [TYPE_HIGH]: { next: 10, nextNext: 5 }, // 합계 15 (자기 85)
+};
+
 const TURN_SEQUENCE_3P = [
-  { player: 'white', type: 70 },
-  { player: 'blue', type: 70 },
-  { player: 'red', type: 90 },
-  { player: 'white', type: 90 },
-  { player: 'blue', type: 90 },
-  { player: 'red', type: 70 },
+  { player: 'white', type: TYPE_LOW },
+  { player: 'blue', type: TYPE_LOW },
+  { player: 'red', type: TYPE_HIGH },
+  { player: 'white', type: TYPE_HIGH },
+  { player: 'blue', type: TYPE_HIGH },
+  { player: 'red', type: TYPE_LOW },
 ];
 
 const GAME_ACTIONS_3P = {
@@ -37,10 +57,10 @@ const GAME_ACTIONS_3P = {
   RESET_GAME: 'reset_game',
 };
 
-const MAX_CHECKS_PER_PLAYER = 3;
-const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 3; // 9회
+const MAX_CHECKS_PER_PLAYER = 4;
+const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 3;
 
-const TOTAL_CHARACTERS = 8;
+const TOTAL_CHARACTERS = 11;
 const DEFAULT_CHARACTER = 0;
 
 // 사운드 재생
@@ -245,12 +265,16 @@ export const useGameStore3P = create((set, get) => ({
             // 자신의 돌로 확정
             finalColor = stoneInfo.player;
           } else {
-            // 나머지 확률을 두 상대방에게 균등 분배
-            const otherColors = PLAYER_COLORS.filter(
-              (c) => c !== stoneInfo.player
-            );
+            // 차등 분배: 다음턴 플레이어 > 다다음턴 플레이어
+            const { next, nextNext } = getNextColors(stoneInfo.player);
+            const dist = FAIL_DIST[stoneInfo.type] ?? {
+              next: 25,
+              nextNext: 15,
+            };
+            // 실패 확률 전체(100 - 자기확률) 중 next/nextNext 비율로 분배
+            const nextThreshold = dist.next / (dist.next + dist.nextNext);
             const rand2 = Math.random();
-            finalColor = rand2 < 0.5 ? otherColors[0] : otherColors[1];
+            finalColor = rand2 < nextThreshold ? next : nextNext;
           }
 
           newBoard[row][col] = getConfirmedValue(finalColor);
@@ -521,9 +545,10 @@ export const useGameStore3P = create((set, get) => ({
 // === 유틸리티 함수 ===
 
 const getStoneValue3P = (player, type) => {
-  if (player === 'white') return type === 90 ? WHITE_90 : WHITE_70;
-  if (player === 'blue') return type === 90 ? BLUE_90 : BLUE_70;
-  return type === 90 ? RED_90 : RED_70;
+  const isHigh = type >= TYPE_HIGH;
+  if (player === 'white') return isHigh ? WHITE_HIGH : WHITE_LOW;
+  if (player === 'blue') return isHigh ? BLUE_HIGH : BLUE_LOW;
+  return isHigh ? RED_HIGH : RED_LOW;
 };
 
 const getConfirmedValue = (color) => {
@@ -534,22 +559,22 @@ const getConfirmedValue = (color) => {
 
 export const getStoneInfo3P = (cellValue) => {
   switch (cellValue) {
-    case WHITE_90:
-      return { player: 'white', type: 90, confirmed: false };
-    case WHITE_70:
-      return { player: 'white', type: 70, confirmed: false };
+    case WHITE_HIGH:
+      return { player: 'white', type: TYPE_HIGH, confirmed: false };
+    case WHITE_LOW:
+      return { player: 'white', type: TYPE_LOW, confirmed: false };
     case WHITE_CONFIRMED:
       return { player: 'white', type: 100, confirmed: true };
-    case BLUE_90:
-      return { player: 'blue', type: 90, confirmed: false };
-    case BLUE_70:
-      return { player: 'blue', type: 70, confirmed: false };
+    case BLUE_HIGH:
+      return { player: 'blue', type: TYPE_HIGH, confirmed: false };
+    case BLUE_LOW:
+      return { player: 'blue', type: TYPE_LOW, confirmed: false };
     case BLUE_CONFIRMED:
       return { player: 'blue', type: 100, confirmed: true };
-    case RED_90:
-      return { player: 'red', type: 90, confirmed: false };
-    case RED_70:
-      return { player: 'red', type: 70, confirmed: false };
+    case RED_HIGH:
+      return { player: 'red', type: TYPE_HIGH, confirmed: false };
+    case RED_LOW:
+      return { player: 'red', type: TYPE_LOW, confirmed: false };
     case RED_CONFIRMED:
       return { player: 'red', type: 100, confirmed: true };
     default:
@@ -603,6 +628,7 @@ const checkWin3P = (board, checker = null) => {
           }
         }
 
+        // 승리기준: 5목이상
         if (count >= 5) {
           wins[player].push({ player, stones });
         }
@@ -632,14 +658,14 @@ const checkWin3P = (board, checker = null) => {
 export {
   BOARD_SIZE,
   EMPTY,
-  WHITE_90,
-  WHITE_70,
+  WHITE_HIGH,
+  WHITE_LOW,
   WHITE_CONFIRMED,
-  BLUE_90,
-  BLUE_70,
+  BLUE_HIGH,
+  BLUE_LOW,
   BLUE_CONFIRMED,
-  RED_90,
-  RED_70,
+  RED_HIGH,
+  RED_LOW,
   RED_CONFIRMED,
   TURN_SEQUENCE_3P,
   GAME_ACTIONS_3P,

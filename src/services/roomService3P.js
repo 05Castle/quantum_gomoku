@@ -50,9 +50,9 @@ export const createRoom3P = async (hostNickname, hostCharacter = 0) => {
       currentPlayerCount: 1,
       lastAction: null,
       currentTurnIndex: 0,
-      hostCheckCount: 3,
-      player2CheckCount: 3,
-      player3CheckCount: 3,
+      hostCheckCount: 4,
+      player2CheckCount: 4,
+      player3CheckCount: 4,
       totalChecksUsed: 0,
       playerLeftSignal: null,
       roomId,
@@ -73,13 +73,17 @@ export const joinRoom3P = async (roomId, nickname, character = 0) => {
   try {
     const roomData = await getDocument('rooms3p', roomId);
 
-    if (!roomData) return { success: false, error: '존재하지 않는 방 ID입니다.' };
+    if (!roomData)
+      return { success: false, error: '존재하지 않는 방 ID입니다.' };
 
     if (
       roomData.status === ROOM_STATUS_3P.PLAYING ||
       roomData.status === ROOM_STATUS_3P.FINISHED
     ) {
-      return { success: false, error: '이미 게임이 진행 중이거나 종료된 방입니다.' };
+      return {
+        success: false,
+        error: '이미 게임이 진행 중이거나 종료된 방입니다.',
+      };
     }
 
     if (roomData.currentPlayerCount >= roomData.maxPlayers) {
@@ -166,9 +170,9 @@ export const sendGameAction3P = async (roomId, actionData) => {
       updateData.lastAction = null;
       updateData.currentTurnIndex = 0;
       updateData.status = ROOM_STATUS_3P.PLAYING;
-      updateData.hostCheckCount = 3;
-      updateData.player2CheckCount = 3;
-      updateData.player3CheckCount = 3;
+      updateData.hostCheckCount = 4;
+      updateData.player2CheckCount = 4;
+      updateData.player3CheckCount = 4;
       updateData.totalChecksUsed = 0;
       updateData.resetSignal = ts;
       updateData.playerLeftSignal = null; // 리셋 시 나감 신호 초기화
@@ -229,9 +233,9 @@ export const leaveRoom3P = async (roomId, playerRole) => {
         currentPlayerCount: roomData.currentPlayerCount - 1,
         // status는 변경하지 않음 - playing 유지해야 감지 가능
         lastAction: null,
-        hostCheckCount: 3,
-        player2CheckCount: 3,
-        player3CheckCount: 3,
+        hostCheckCount: 4,
+        player2CheckCount: 4,
+        player3CheckCount: 4,
         totalChecksUsed: 0,
         // 나간 플레이어 정보를 신호로 전달
         playerLeftSignal: `${playerRole}_${Date.now()}`,
@@ -248,7 +252,11 @@ export const leaveRoom3P = async (roomId, playerRole) => {
 /**
  * 연결 상태 업데이트
  */
-export const updateConnectionStatus3P = async (roomId, playerRole, connected) => {
+export const updateConnectionStatus3P = async (
+  roomId,
+  playerRole,
+  connected
+) => {
   try {
     const field = `${playerRole}Connected`;
     await updateDocument('rooms3p', roomId, { [field]: connected });

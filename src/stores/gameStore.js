@@ -29,7 +29,7 @@ const MAX_CHECKS_PER_PLAYER = 4;
 const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 2;
 
 // 캐릭터 상수
-const TOTAL_CHARACTERS = 8;
+const TOTAL_CHARACTERS = 11;
 const DEFAULT_CHARACTER = 0;
 
 // 사운드 재생 함수

@@ -11,6 +11,10 @@ import {
   EMPTY,
   TURN_SEQUENCE_3P,
   GAME_ACTIONS_3P,
+  PLAYER_COLORS,
+  FAIL_DIST,
+  TYPE_LOW,
+  TYPE_HIGH,
 } from '../stores/gameStore3P';
 import PlayerInfoBar3P from './PlayerInfoBar3P';
 import ChatBox from './ChatBox';
@@ -308,20 +312,13 @@ const OmokGame3P = () => {
   // 현재 턴 돌의 차등 확률 문자열 반환
   // ex) ⚪60% / 🔵25% / 🔴15%
   const getProbabilityDisplay = (player, type) => {
-    const PLAYER_COLORS = ['white', 'blue', 'red'];
     const idx = PLAYER_COLORS.indexOf(player);
     const next = PLAYER_COLORS[(idx + 1) % 3];
     const nextNext = PLAYER_COLORS[(idx + 2) % 3];
-
-    const FAIL_DIST = {
-      60: { next: 25, nextNext: 15 },
-      85: { next: 10, nextNext: 5 },
-    };
     const dist = FAIL_DIST[type] ?? {
       next: Math.round((100 - type) * 0.625),
       nextNext: Math.round((100 - type) * 0.375),
     };
-
     return `${getColorEmoji(player)}${type}% / ${getColorEmoji(next)}${dist.next}% / ${getColorEmoji(nextNext)}${dist.nextNext}%`;
   };
 
@@ -406,6 +403,44 @@ const OmokGame3P = () => {
   return (
     <div className="game-container">
       <PlayerInfoBar3P />
+
+      {/* 확률 참조표 */}
+      <div className="prob-table">
+        <div className="prob-table-title">확률 참조표</div>
+        {PLAYER_COLORS.map((player) => {
+          const idx = PLAYER_COLORS.indexOf(player);
+          const next = PLAYER_COLORS[(idx + 1) % 3];
+          const nextNext = PLAYER_COLORS[(idx + 2) % 3];
+          const emoji = getColorEmoji(player);
+          const emojiNext = getColorEmoji(next);
+          const emojiNextNext = getColorEmoji(nextNext);
+          return [TYPE_LOW, TYPE_HIGH].map((type) => {
+            const dist = FAIL_DIST[type];
+            return (
+              <div key={`${player}-${type}`} className="prob-row">
+                <span className="prob-stone">
+                  {emoji} {type}돌
+                </span>
+                <div className="prob-values">
+                  <span>
+                    {emoji}
+                    {type}%
+                  </span>
+                  <span>
+                    {emojiNext}
+                    {dist.next}%
+                  </span>
+                  <span>
+                    {emojiNextNext}
+                    {dist.nextNext}%
+                  </span>
+                </div>
+              </div>
+            );
+          });
+        })}
+      </div>
+
       <ChatBox roomId={roomId} myNickname={myNickname} />
 
       {/* 연결 상태 */}

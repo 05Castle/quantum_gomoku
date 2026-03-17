@@ -193,7 +193,7 @@
 /* === 연결 상태 표시 === */
 .connection-status {
   position: fixed;
-  right: 40px;
+  left: 40px;
   bottom: 4%;
   display: flex;
   align-items: center;

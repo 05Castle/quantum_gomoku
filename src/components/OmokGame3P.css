@@ -6,7 +6,7 @@
 
 /* === 3인 플레이어 정보 바 === */
 .player-info-bar-3p {
-  right: 20px;
+  right: 40px;
   top: 5%;
   min-width: 220px;
 }
@@ -114,5 +114,68 @@
 
   .player-info-bar-3p .player-name {
     font-size: 0.8rem;
+  }
+}
+
+/* === 확률 참조표 === */
+.prob-table {
+  position: fixed;
+  right: 40px;
+  bottom: 4%;
+  width: 260px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+}
+
+.prob-table-title {
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 8px;
+  font-size: 1rem;
+  text-align: center;
+  padding-bottom: 6px;
+}
+
+.prob-row {
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #c6c6c6;
+}
+
+.prob-row:last-child {
+  border-bottom: none;
+}
+
+.prob-stone {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  width: 60px;
+}
+
+.prob-values {
+  color: #555;
+  font-size: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+}
+
+@media (max-width: 1749px) {
+  .prob-table {
+    right: 10px;
+    width: 180px;
+    font-size: 0.68rem;
+    bottom: 70px;
+  }
+
+  .prob-values {
+    font-size: 0.65rem;
   }
 }

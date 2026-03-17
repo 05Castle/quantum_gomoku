@@ -26,6 +26,10 @@ const OmokGame3P = () => {
   const [showPopup, setShowPopup] = React.useState(false);
   const autoPassTimerRef = useRef(null);
 
+  // 마지막으로 처리한 actionId와 resetSignal을 ref로 추적
+  const lastProcessedActionId = useRef(null);
+  const lastProcessedResetSignal = useRef(null);
+
   const {
     board,
     turnIndex,
@@ -57,7 +61,6 @@ const OmokGame3P = () => {
 
   const [hoveredCell, setHoveredCell] = React.useState(null);
 
-  // 마운트 시 플레이어 정보 설정
   useEffect(() => {
     if (location.state) {
       const {
@@ -85,7 +88,6 @@ const OmokGame3P = () => {
     }
   }, [location.state, roomId]);
 
-  // 방 구독
   useEffect(() => {
     let unsubscribe = null;
     if (roomId && playerRole) {
@@ -120,7 +122,6 @@ const OmokGame3P = () => {
     }
   }, [gameOver]);
 
-  // 언마운트 시 타이머 정리
   useEffect(() => {
     return () => {
       if (autoPassTimerRef.current) clearTimeout(autoPassTimerRef.current);
@@ -135,8 +136,10 @@ const OmokGame3P = () => {
   };
 
   const handleRoomUpdate = (roomData) => {
+    // 플레이어 정보 업데이트
     updatePlayersFromRoom(roomData);
 
+    // 상대방 나감 감지
     if (playerRole !== 'host') {
       if (roomData.currentPlayerCount < 3 && roomData.status !== 'playing') {
         setOpponentLeft(true);
@@ -144,14 +147,44 @@ const OmokGame3P = () => {
       }
     }
 
-    if (roomData.actions) {
-      const currentPlayerRole = useGameStore3P.getState().playerRole; // 클로저 문제 해결
-      Object.entries(roomData.actions).forEach(([key, actionData]) => {
-        if (actionData.sender !== currentPlayerRole) {
-          processReceivedAction3P(key, actionData);
-        }
-      });
+    const currentPlayerRole = useGameStore3P.getState().playerRole;
+
+    // === 리셋 신호 처리 ===
+    // resetSignal이 새 값이면 리셋 실행 (리셋한 플레이어 제외)
+    if (
+      roomData.resetSignal &&
+      roomData.resetSignal !== lastProcessedResetSignal.current
+    ) {
+      lastProcessedResetSignal.current = roomData.resetSignal;
+      // 리셋한 플레이어는 이미 로컬에서 직접 리셋했으므로 제외
+      // lastAction이 null이면 리셋 신호임
+      if (!roomData.lastAction) {
+        // 내가 보낸 리셋이 아닌 경우에만 처리
+        // (내가 보낸 경우는 handleResetGame에서 직접 처리)
+        resetGame3P();
+        lastProcessedActionId.current = null;
+        playSound('start.mp3');
+        return;
+      }
     }
+
+    // === lastAction 처리 ===
+    if (!roomData.lastAction) return;
+
+    const action = roomData.lastAction;
+
+    // 이미 처리한 액션이면 무시
+    if (action.actionId === lastProcessedActionId.current) return;
+
+    // 내가 보낸 액션이면 무시
+    if (action.sender === currentPlayerRole) {
+      lastProcessedActionId.current = action.actionId;
+      return;
+    }
+
+    // 새 액션 처리
+    lastProcessedActionId.current = action.actionId;
+    processReceivedAction3P(action.actionId, action);
   };
 
   const handleRoomError = (error) => {
@@ -197,12 +230,7 @@ const OmokGame3P = () => {
       playSound('place.mp3');
       const actionData = placeStone3P(row, col);
       if (actionData) {
-        const turnKey = `t${actionData.turnIndex}`;
-        sendGameAction3P(roomId, {
-          ...actionData,
-          sender: playerRole,
-          turnIndex: actionData.turnIndex,
-        });
+        sendGameAction3P(roomId, { ...actionData, sender: playerRole });
         setPlacedCell({ row, col });
         setShowPopup(true);
       }
@@ -237,11 +265,7 @@ const OmokGame3P = () => {
           if (s.gameOver) return;
           const passData = s.passTurn3P();
           if (passData) {
-            sendGameAction3P(roomId, {
-              ...passData,
-              sender: playerRole,
-              turnIndex: passData.turnIndex,
-            });
+            sendGameAction3P(roomId, { ...passData, sender: playerRole });
           }
         }, 2000);
       }
@@ -252,11 +276,7 @@ const OmokGame3P = () => {
     if (!isCurrentlyMyTurn) return;
     const actionData = passTurn3P();
     if (actionData) {
-      sendGameAction3P(roomId, {
-        ...actionData,
-        sender: playerRole,
-        turnIndex: actionData.turnIndex,
-      });
+      sendGameAction3P(roomId, { ...actionData, sender: playerRole });
       setShowPopup(false);
     }
   };
@@ -264,7 +284,10 @@ const OmokGame3P = () => {
   const handleResetGame = () => {
     playSound('start.mp3');
     if (autoPassTimerRef.current) clearTimeout(autoPassTimerRef.current);
+    // 리셋한 플레이어는 직접 리셋
     resetGame3P();
+    lastProcessedActionId.current = null;
+    lastProcessedResetSignal.current = null;
     sendGameAction3P(roomId, {
       action: GAME_ACTIONS_3P.RESET_GAME,
       sender: playerRole,
@@ -288,7 +311,6 @@ const OmokGame3P = () => {
     return getNicknameByColor(winner) || winner;
   };
 
-  // 팝업 위치 계산
   const getCellSize = () => (window.innerWidth > 1749 ? 60 : 38);
 
   const getPopupPosition = (row, col) => {
@@ -299,9 +321,7 @@ const OmokGame3P = () => {
     let top = (row + 1) * cellSize + 8;
     let left = col * cellSize - popupWidth / 2 + cellSize / 2;
 
-    if (row >= BOARD_SIZE - 3) {
-      top = row * cellSize - popupHeight - 8;
-    }
+    if (row >= BOARD_SIZE - 3) top = row * cellSize - popupHeight - 8;
     if (left < 0) left = 0;
     const boardPixelWidth = BOARD_SIZE * cellSize;
     if (left + popupWidth > boardPixelWidth)

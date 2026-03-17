@@ -43,10 +43,6 @@ const TOTAL_MAX_CHECKS = MAX_CHECKS_PER_PLAYER * 3; // 9회
 const TOTAL_CHARACTERS = 8;
 const DEFAULT_CHARACTER = 0;
 
-// === 중복 처리 방지용 모듈 레벨 Set ===
-// React 렌더링 사이클 밖에서 관리되므로 리렌더링에 영향받지 않음
-const processedKeys = new Set();
-
 // 사운드 재생
 const playSound = (soundFile) => {
   try {
@@ -129,7 +125,6 @@ export const useGameStore3P = create((set, get) => ({
 
   // 게임 상태 초기화
   resetGame3P: () => {
-    processedKeys.clear(); // 모듈 레벨 Set 초기화
     set({
       board: createEmptyBoard(),
       originalBoard: createEmptyBoard(),
@@ -148,7 +143,6 @@ export const useGameStore3P = create((set, get) => ({
 
   // 방 나가기
   exitRoom3P: () => {
-    processedKeys.clear(); // 모듈 레벨 Set 초기화
     set({
       isConnected: false,
       roomId: '',
@@ -406,10 +400,6 @@ export const useGameStore3P = create((set, get) => ({
 
   // 외부 액션 처리 (다른 플레이어에게 받은 액션)
   processReceivedAction3P: (actionKey, actionData) => {
-    // 모듈 레벨 Set으로 중복 처리 방지
-    if (processedKeys.has(actionKey)) return;
-    processedKeys.add(actionKey);
-
     const { action } = actionData;
 
     switch (action) {

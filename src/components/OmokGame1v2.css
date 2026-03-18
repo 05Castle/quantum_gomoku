@@ -1,0 +1,165 @@
+/* OmokGame1v2.css */
+/* 기본 레이아웃은 OmokGame.css를 그대로 활용하고
+   1v2 모드에서 추가/변경되는 스타일만 정의합니다 */
+
+@import './OmokGame.css';
+
+/* === 1v2 플레이어 정보 바 === */
+.player-info-bar-1v2 {
+  right: 20px;
+  top: 5%;
+  min-width: 240px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-info-bar-1v2 .player-card {
+  padding: 10px 15px;
+  gap: 8px;
+  width: 100%;
+}
+
+.player-info-bar-1v2 .character-avatar {
+  width: 80px;
+  height: 80px;
+}
+
+/* 흑팀 카드 */
+.team-card {
+  background: white;
+  border-radius: 15px;
+  padding: 10px 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 3px solid #ddd;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.team-card.winner {
+  animation: winnerGlow 2s ease-in-out infinite;
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  border-color: #ffd700 !important;
+  box-shadow:
+    0 0 20px rgba(255, 215, 0, 0.6),
+    0 8px 25px rgba(255, 215, 0, 0.3);
+}
+
+.team-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.team-members {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.team-member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.character-avatar-small {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #333;
+  transition: all 0.3s ease;
+}
+
+.team-card.winner .character-avatar-small {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+/* === 1v2 돌 색상 ===
+   2색 (white/black), high/low로 구분 */
+
+/* 백돌 */
+.stone.white-high {
+  background-color: #f3f3f3;
+  color: #000;
+  border: 2px solid #ccc;
+}
+
+.stone.white-low {
+  background-color: #e2e2e2;
+  color: #000;
+  border: 2px solid #ccc;
+}
+
+.stone.white-confirmed {
+  background-color: #ffffff;
+  color: #000;
+  border: 2px solid #999;
+}
+
+/* 흑돌 */
+.stone.black-high {
+  background-color: #272727;
+  color: #fff;
+}
+
+.stone.black-low {
+  background-color: #5e5e5e;
+  color: #fff;
+}
+
+.stone.black-confirmed {
+  background-color: #000000;
+  color: #fff;
+}
+
+/* === 플레이어 카드 테두리 === */
+.white-player .character-avatar {
+  border-color: #ccc;
+}
+
+.black-team .character-avatar-small {
+  border-color: #333;
+}
+
+/* === 반응형 === */
+@media (max-width: 1749px) {
+  .player-info-bar-1v2 {
+    right: 10px;
+    min-width: 170px;
+    top: 3%;
+  }
+
+  .player-info-bar-1v2 .character-avatar {
+    width: 55px;
+    height: 55px;
+  }
+
+  .player-info-bar-1v2 .player-card {
+    padding: 8px 10px;
+    gap: 5px;
+  }
+
+  .player-info-bar-1v2 .player-name {
+    font-size: 0.8rem;
+  }
+
+  .character-avatar-small {
+    width: 40px;
+    height: 40px;
+  }
+
+  .team-card {
+    padding: 8px 10px;
+  }
+
+  .team-label {
+    font-size: 0.8rem;
+  }
+}

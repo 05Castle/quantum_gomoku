@@ -66,6 +66,12 @@ const MatchingScreen = () => {
     });
   };
 
+  const handleSelect1v2 = () => {
+    navigate('/matching1v2', {
+      state: { myNickname, myCharacter },
+    });
+  };
+
   useEffect(() => {
     return () => {
       if (unsubscribeRoom) unsubscribeRoom();
@@ -337,6 +343,12 @@ const MatchingScreen = () => {
                 onClick={handleSelect2P}
               >
                 👨‍👨 2인 모드
+              </button>
+              <button
+                className="btn mode-btn mode-1v2-btn"
+                onClick={handleSelect1v2}
+              >
+                ⚔️ 1vs2 모드 (beta)
               </button>
               <button
                 className="btn mode-btn mode-3p-btn"

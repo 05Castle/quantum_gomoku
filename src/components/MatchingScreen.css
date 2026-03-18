@@ -539,6 +539,15 @@ input:focus-visible {
   box-shadow: 0 8px 25px rgba(247, 151, 30, 0.3);
 }
 
+.mode-1v2-btn {
+  background: linear-gradient(135deg, #f7931e, #f05a28);
+  color: white;
+}
+
+.mode-1v2-btn:not(:disabled):hover {
+  box-shadow: 0 8px 25px rgba(240, 90, 40, 0.3);
+}
+
 /* === M3: 3인 모드 매칭 화면 === */
 .mode-badge {
   display: inline-block;

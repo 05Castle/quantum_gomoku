@@ -400,7 +400,9 @@ const OmokGame1v2 = () => {
         )}
         {/* 인접 금지 X 표시 */}
         {isBlocked && isCurrentlyMyTurn && !gameOver && (
-          <div className="blocked-cell">✕</div>
+          <div className="blocked-cell">
+            <span class="material-symbols-outlined">close_small</span>
+          </div>
         )}
         {/* 호버 프리뷰 */}
         {isHovered && canPreview && (
@@ -527,7 +529,7 @@ const OmokGame1v2 = () => {
                 title={`체크 (${remainingChecks}회 남음)`}
               >
                 <span className="material-symbols-outlined">search</span>
-                <span className="popup-count">({remainingChecks})</span>
+                <span className="popup-count">{remainingChecks}/4</span>
               </button>
               <button
                 className="action-popup-btn pass-popup-btn"

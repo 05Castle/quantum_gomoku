@@ -35,7 +35,7 @@ const PlayerInfoBar1v2 = () => {
       >
         <div className="player-role">
           <span className="stone-icon">⚪</span>
-          <span className="role-text">백 (고수)</span>
+          <span className="role-text">백돌</span>
         </div>
         <div className="player-character">
           <img
@@ -53,14 +53,14 @@ const PlayerInfoBar1v2 = () => {
       <div className={`team-card black-team ${isBlackWinner ? 'winner' : ''}`}>
         <div className="team-label">
           <span className="stone-icon">⚫</span>
-          <span className="role-text">흑팀 (하수)</span>
+          <span className="role-text">흑팀</span>
         </div>
         <div className="team-members">
           <div className="team-member">
             <img
               src={getCharacterImg(p2CharIdx, isBlackWinner)}
               alt="흑팀 1 캐릭터"
-              className="character-avatar-small"
+              className="character-avatar"
             />
             <div className="player-name">{player2Nickname || '대기중...'}</div>
           </div>
@@ -68,7 +68,7 @@ const PlayerInfoBar1v2 = () => {
             <img
               src={getCharacterImg(p3CharIdx, isBlackWinner)}
               alt="흑팀 2 캐릭터"
-              className="character-avatar-small"
+              className="character-avatar"
             />
             <div className="player-name">{player3Nickname || '대기중...'}</div>
           </div>

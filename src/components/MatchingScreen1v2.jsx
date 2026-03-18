@@ -204,7 +204,7 @@ const MatchingScreen1v2 = () => {
 
   // 역할별 라벨 - 백(호스트) vs 흑팀(player2/3)
   const getRoleLabel = (role) => {
-    if (role === 'host') return '⚪ 백 (고수)';
+    if (role === 'host') return '⚪ 백돌';
     if (role === 'player2') return '⚫ 흑팀 1';
     return '⚫ 흑팀 2';
   };
@@ -228,23 +228,13 @@ const MatchingScreen1v2 = () => {
           {/* 방 만들기 전 */}
           {!roomId && (
             <>
-              {/* 모드 설명 */}
-              <div className="mode-description">
-                <p>
-                  ⚪ <strong>백(고수)</strong> : 혼자 플레이, 매 턴 2번 착수
-                </p>
-                <p>
-                  ⚫ <strong>흑팀(하수)</strong> : 2인 협력, 각 1번 착수
-                </p>
-              </div>
-
               <div className="button-group">
                 <button
                   className="btn create-btn"
                   onClick={handleCreateRoom}
                   disabled={isLoading}
                 >
-                  ⚪ 백으로 방 만들기
+                  🏠 방 만들기
                 </button>
                 <div className="join-section">
                   <input
@@ -262,7 +252,7 @@ const MatchingScreen1v2 = () => {
                     onClick={handleJoinRoom}
                     disabled={isLoading || !inputRoomId.trim()}
                   >
-                    ⚫ 흑팀 참가
+                    ⚫ 흑팀으로 참가
                   </button>
                 </div>
               </div>
@@ -303,7 +293,7 @@ const MatchingScreen1v2 = () => {
                   {playerNames.map((name, i) => (
                     <div key={i} className="player-slot filled">
                       {i === 0 ? '⚪' : '⚫'} {name}
-                      {i === 0 ? ' (백/고수)' : ` (흑팀${i})`}
+                      {i === 0 ? ' (백돌)' : ` (흑팀${i})`}
                     </div>
                   ))}
                   {Array(3 - playerNames.length)

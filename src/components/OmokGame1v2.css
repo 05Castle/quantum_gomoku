@@ -6,29 +6,29 @@
 
 /* === 1v2 플레이어 정보 바 === */
 .player-info-bar-1v2 {
-  right: 20px;
-  top: 5%;
-  min-width: 240px;
+  right: 40px;
+  top: 10%;
+  min-width: 300px;
   flex-direction: column;
-  gap: 10px;
+  gap: 15px;
 }
 
 .player-info-bar-1v2 .player-card {
-  padding: 10px 15px;
-  gap: 8px;
+  padding: 15px 20px;
+  gap: 15px;
   width: 100%;
 }
 
 .player-info-bar-1v2 .character-avatar {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
 }
 
 /* 흑팀 카드 */
 .team-card {
   background: white;
   border-radius: 15px;
-  padding: 10px 15px;
+  padding: 15px 20px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border: 3px solid #ddd;
   width: 100%;
@@ -47,16 +47,17 @@
 .team-label {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   font-size: 0.9rem;
   font-weight: 600;
   color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .team-members {
   display: flex;
-  gap: 12px;
+  gap: 30px;
   justify-content: center;
 }
 
@@ -64,19 +65,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-.character-avatar-small {
-  width: 55px;
-  height: 55px;
+.team-member .character-avatar {
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #333;
   transition: all 0.3s ease;
 }
 
-.team-card.winner .character-avatar-small {
+.team-card.winner .character-avatar {
   border-color: #ffd700 !important;
   box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
@@ -124,7 +125,7 @@
   border-color: #ccc;
 }
 
-.black-team .character-avatar-small {
+.black-team .character-avatar {
   border-color: #333;
 }
 
@@ -135,24 +136,27 @@
   left: 50%;
   transform: translate(-50%, -50%);
   color: #e53e3e;
-  font-size: 1rem;
-  font-weight: bold;
+
   pointer-events: none;
   z-index: 5;
   opacity: 0.7;
+}
+
+.blocked-cell .material-symbols-outlined {
+  font-size: 2.5rem; /* 여기서 크기 조절 */
 }
 
 /* === 반응형 === */
 @media (max-width: 1749px) {
   .player-info-bar-1v2 {
     right: 10px;
-    min-width: 170px;
+    min-width: 200px;
     top: 3%;
   }
 
   .player-info-bar-1v2 .character-avatar {
-    width: 55px;
-    height: 55px;
+    width: 80px;
+    height: 80px;
   }
 
   .player-info-bar-1v2 .player-card {
@@ -164,9 +168,9 @@
     font-size: 0.8rem;
   }
 
-  .character-avatar-small {
-    width: 40px;
-    height: 40px;
+  .team-member .character-avatar {
+    width: 80px;
+    height: 80px;
   }
 
   .team-card {
@@ -175,5 +179,9 @@
 
   .team-label {
     font-size: 0.8rem;
+  }
+
+  .team-members {
+    gap: 15px;
   }
 }

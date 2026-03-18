@@ -55,7 +55,7 @@ const GAME_ACTIONS_1V2 = {
   RESET_GAME: 'reset_game',
 };
 
-const TOTAL_CHARACTERS = 11;
+const TOTAL_CHARACTERS = 12;
 const DEFAULT_CHARACTER = 0;
 
 // 사운드 재생

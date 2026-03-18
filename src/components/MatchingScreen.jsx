@@ -10,6 +10,21 @@ import {
 import title from '../assets/title.png';
 import './MatchingScreen.css';
 
+const CHARACTER_NAMES = [
+  '램램',
+  '휘용',
+  '지누',
+  '나나양',
+  '뚜띠',
+  '탬탬버린',
+  '김똘복',
+  '꽃핀',
+  '이춘향',
+  '페뇨',
+  '연비니',
+  '모라라',
+];
+
 const MatchingScreen = () => {
   const navigate = useNavigate();
 
@@ -40,6 +55,7 @@ const MatchingScreen = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [unsubscribeRoom, setUnsubscribeRoom] = useState(null);
   const [hostColor, setHostColor] = useState(null);
+  const [isCharacterHovered, setIsCharacterHovered] = useState(false);
 
   const handleNicknameSubmit = () => {
     if (!inputNickname.trim()) {
@@ -278,21 +294,35 @@ const MatchingScreen = () => {
               <div className="character-selector">
                 <button
                   className="character-arrow left"
-                  onClick={prevCharacter}
+                  onClick={() => {
+                    prevCharacter();
+                    setIsCharacterHovered(false);
+                  }}
                   type="button"
                 >
                   ◀
                 </button>
-                <div className="character-display">
+                <div
+                  className="character-display"
+                  onMouseEnter={() => setIsCharacterHovered(true)}
+                  onMouseLeave={() => setIsCharacterHovered(false)}
+                >
                   <img
-                    src={getCharacterImage(myCharacter)}
+                    src={
+                      isCharacterHovered
+                        ? `/characters/c${myCharacter + 1}-win.png`
+                        : getCharacterImage(myCharacter)
+                    }
                     alt={`캐릭터 ${myCharacter + 1}`}
                     className="character-image"
                   />
                 </div>
                 <button
                   className="character-arrow right"
-                  onClick={nextCharacter}
+                  onClick={() => {
+                    nextCharacter();
+                    setIsCharacterHovered(false);
+                  }}
                   type="button"
                 >
                   ▶
@@ -300,7 +330,7 @@ const MatchingScreen = () => {
               </div>
             </div>
 
-            <p>닉네임을 입력하세요</p>
+            <p className="character-name">{CHARACTER_NAMES[myCharacter]}</p>
             <div className="input-group">
               <input
                 type="text"

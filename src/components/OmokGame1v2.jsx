@@ -12,6 +12,7 @@ import {
   TURN_SEQUENCE_1V2,
   GAME_ACTIONS_1V2,
   TYPE_HIGH,
+  isAdjacent,
 } from '../stores/gameStore1v2';
 import PlayerInfoBar1v2 from './PlayerInfoBar1v2';
 import ChatBox from './ChatBox';
@@ -43,6 +44,7 @@ const OmokGame1v2 = () => {
     myNickname,
     myColor,
     playerRole,
+    prevStonePos,
 
     placeStone1v2,
     executeCheck1v2,
@@ -356,15 +358,23 @@ const OmokGame1v2 = () => {
       (s) => s.row === row && s.col === col
     );
 
-    // 호버 프리뷰: 백은 white1/white2 모두, 흑은 자기 sub일 때만
+    // 이어붙이기 금지: prevStonePos가 있으면 활성
+    const isBlocked =
+      cellValue === EMPTY &&
+      prevStonePos &&
+      isAdjacent(row, col, prevStonePos.row, prevStonePos.col);
+
+    // 호버 프리뷰: 막힌 칸이거나 착수 완료면 안 보임
     const canPreview =
       isCurrentlyMyTurn &&
       cellValue === EMPTY &&
+      !isBlocked &&
       !gameOver &&
       (() => {
         const state = useGameStore1v2.getState();
         const cur = TURN_SEQUENCE_1V2[state.turnIndex];
-        const maxStones = cur.player === 'white' ? 2 : 1;
+        const maxStones =
+          cur.player === 'white' && cur.phase !== 'white_single' ? 2 : 1;
         return state.placedStoneCount < maxStones;
       })();
 
@@ -388,6 +398,11 @@ const OmokGame1v2 = () => {
             {!stoneInfo.confirmed && stoneInfo.type}
           </div>
         )}
+        {/* 인접 금지 X 표시 */}
+        {isBlocked && isCurrentlyMyTurn && !gameOver && (
+          <div className="blocked-cell">✕</div>
+        )}
+        {/* 호버 프리뷰 */}
         {isHovered && canPreview && (
           <div
             className={getStoneClasses(

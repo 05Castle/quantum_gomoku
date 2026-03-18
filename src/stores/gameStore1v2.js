@@ -27,24 +27,25 @@ const TEAM_MAX_CHECKS = 4; // 흑팀 공용 자원
 const TOTAL_MAX_CHECKS = HOST_MAX_CHECKS + TEAM_MAX_CHECKS;
 
 // === 턴 시퀀스 ===
-// 첫 바퀴: 백 1착수(white_single) → 흑2P → 흑3P
-// 이후 반복: 백 2착수(white1→white2) → 흑3P → 흑2P
-// phase: 'white_single'=백 첫 바퀴 1착수, 'white1'=백 첫번째, 'white2'=백 두번째, 'black'=흑
+// 첫 바퀴: 백90(single) → 흑70(2P) → 흑90(3P)
+// 반복A:   백(70,90) → 흑70(3P) → 흑90(2P)
+// 반복B:   백(70,90) → 흑70(2P) → 흑90(3P)
+// 이후 반복A → 반복B → 반복A ... 순환
 const TURN_SEQUENCE_1V2 = [
-  // 첫 바퀴
+  // 첫 바퀴 (인덱스 0~2)
   { player: 'white', sub: 'host', type: TYPE_HIGH, phase: 'white_single' },
   { player: 'black', sub: 'player2', type: TYPE_LOW, phase: 'black' },
   { player: 'black', sub: 'player3', type: TYPE_HIGH, phase: 'black' },
-  // 이후 반복 A
+  // 반복A (인덱스 3~6)
   { player: 'white', sub: 'host', type: TYPE_LOW, phase: 'white1' },
   { player: 'white', sub: 'host', type: TYPE_HIGH, phase: 'white2' },
   { player: 'black', sub: 'player3', type: TYPE_LOW, phase: 'black' },
   { player: 'black', sub: 'player2', type: TYPE_HIGH, phase: 'black' },
-  // 이후 반복 B (3번 인덱스부터 반복되도록 getNextTeamTurnIndex에서 처리)
+  // 반복B (인덱스 7~10)
   { player: 'white', sub: 'host', type: TYPE_LOW, phase: 'white1' },
   { player: 'white', sub: 'host', type: TYPE_HIGH, phase: 'white2' },
-  { player: 'black', sub: 'player3', type: TYPE_LOW, phase: 'black' },
-  { player: 'black', sub: 'player2', type: TYPE_HIGH, phase: 'black' },
+  { player: 'black', sub: 'player2', type: TYPE_LOW, phase: 'black' },
+  { player: 'black', sub: 'player3', type: TYPE_HIGH, phase: 'black' },
 ];
 
 const GAME_ACTIONS_1V2 = {
@@ -104,6 +105,11 @@ export const useGameStore1v2 = create((set, get) => ({
   hasChecked: false,
   winningStones: [],
 
+  // 이어붙이기 금지용 - 현재 턴의 직전 착수 위치
+  // white1 착수 후 white2, 또는 흑 첫번째 착수 후 두번째 흑에서만 유효
+  // 턴이 넘어가면(passTurn) null로 초기화됨
+  prevStonePos: null, // { row, col } | null
+
   // === 체크 횟수 ===
   hostCheckCount: HOST_MAX_CHECKS, // 백 독자 자원
   teamCheckCount: TEAM_MAX_CHECKS, // 흑팀 공용 자원
@@ -152,6 +158,7 @@ export const useGameStore1v2 = create((set, get) => ({
       placedStoneCount: 0,
       hasChecked: false,
       winningStones: [],
+      prevStonePos: null,
       hostCheckCount: HOST_MAX_CHECKS,
       teamCheckCount: TEAM_MAX_CHECKS,
       totalChecksUsed: 0,
@@ -177,6 +184,7 @@ export const useGameStore1v2 = create((set, get) => ({
       placedStoneCount: 0,
       hasChecked: false,
       winningStones: [],
+      prevStonePos: null,
       hostCheckCount: HOST_MAX_CHECKS,
       teamCheckCount: TEAM_MAX_CHECKS,
       totalChecksUsed: 0,
@@ -191,16 +199,29 @@ export const useGameStore1v2 = create((set, get) => ({
   // 흑(player2/3): 착수 → placedStoneCount=1 (바로 체크/패스 가능)
   placeStone1v2: (row, col) => {
     const state = get();
-    const { board, originalBoard, turnIndex, gameOver, placedStoneCount } =
-      state;
+    const {
+      board,
+      originalBoard,
+      turnIndex,
+      gameOver,
+      placedStoneCount,
+      prevStonePos,
+    } = state;
 
     const currentTurn = TURN_SEQUENCE_1V2[turnIndex];
     const isWhite = currentTurn.player === 'white';
     const isSingle = currentTurn.phase === 'white_single';
-    // white_single은 1착수, white1/white2는 합쳐서 2착수, black은 1착수
     const maxStones = isWhite && !isSingle ? 2 : 1;
 
     if (gameOver || board[row][col] !== EMPTY || placedStoneCount >= maxStones)
+      return null;
+
+    // 이어붙이기 금지: 현재 턴의 직전 착수 위치 기준
+    // (white1→white2, 흑 첫번째→흑 두번째 연속 착수 시에만 적용)
+    if (
+      prevStonePos &&
+      isAdjacent(row, col, prevStonePos.row, prevStonePos.col)
+    )
       return null;
 
     const stoneValue = getStoneValue1v2(currentTurn.player, currentTurn.type);
@@ -209,16 +230,26 @@ export const useGameStore1v2 = create((set, get) => ({
     newBoard[row][col] = stoneValue;
     newOriginalBoard[row][col] = stoneValue;
 
-    // 백의 첫 번째 착수(white1): turnIndex를 white2로 넘김
     const isWhiteFirst = isWhite && currentTurn.phase === 'white1';
     const newTurnIndex = isWhiteFirst ? turnIndex + 1 : turnIndex;
     const newPlacedStoneCount = placedStoneCount + 1;
+
+    // 현재 phase가 쌍의 첫번째일 때만 prevStonePos 저장
+    // white1 → white2가 뒤따름
+    // black(인덱스 N) → 다음 인덱스(N+1)도 black인 경우
+    const isFirstOfPair =
+      currentTurn.phase === 'white1' ||
+      (currentTurn.phase === 'black' &&
+        turnIndex + 1 < TURN_SEQUENCE_1V2.length &&
+        TURN_SEQUENCE_1V2[turnIndex + 1].phase === 'black');
+    const newPrevStonePos = isFirstOfPair ? { row, col } : null;
 
     set({
       board: newBoard,
       originalBoard: newOriginalBoard,
       placedStoneCount: newPlacedStoneCount,
       turnIndex: newTurnIndex,
+      prevStonePos: newPrevStonePos,
     });
 
     return {
@@ -230,6 +261,7 @@ export const useGameStore1v2 = create((set, get) => ({
       phase: currentTurn.phase,
       turnIndex: newTurnIndex,
       placedStoneCount: newPlacedStoneCount,
+      prevStonePos: newPrevStonePos,
       timestamp: Date.now(),
     };
   },
@@ -382,6 +414,7 @@ export const useGameStore1v2 = create((set, get) => ({
       placedStoneCount: 0,
       hasChecked: false,
       winningStones: [],
+      prevStonePos: null,
     });
 
     return {
@@ -412,6 +445,7 @@ export const useGameStore1v2 = create((set, get) => ({
           originalBoard: newOriginalBoard,
           placedStoneCount: placedStoneCount ?? 1,
           turnIndex: turnIndex ?? state.turnIndex,
+          prevStonePos: actionData.prevStonePos ?? null,
         });
         playSound('place.mp3');
         break;
@@ -521,16 +555,21 @@ export const useGameStore1v2 = create((set, get) => ({
 
 // === 유틸리티 함수 ===
 
+// 이어붙이기 금지: 8칸 인접 여부 체크
+const isAdjacent = (row, col, lastRow, lastCol) => {
+  return Math.abs(row - lastRow) <= 1 && Math.abs(col - lastCol) <= 1;
+};
+
 // 다음 턴 인덱스 계산
-// 첫 바퀴(0~2) 이후에는 반복 구간(3~6)에서만 순환
-const REPEAT_START = 3; // 반복 시작 인덱스 (첫 반복 A의 white1)
-const REPEAT_END = 6; // 반복 끝 인덱스 (반복 A의 마지막 black)
+// 첫 바퀴(0~2) 이후에는 반복A+B 구간(3~10)에서 순환
+const REPEAT_START = 3; // 반복 시작 인덱스
+const REPEAT_END = 10; // 반복 끝 인덱스 (반복B의 마지막 black)
 
 const getNextTeamTurnIndex = (currentIndex) => {
   const next = currentIndex + 1;
   // 첫 바퀴(0~2) 내에서는 그냥 다음으로
   if (currentIndex < REPEAT_START) return next;
-  // 반복 구간 끝(6)에 도달하면 반복 시작(3)으로
+  // 반복 구간 끝(10)에 도달하면 반복 시작(3)으로
   if (next > REPEAT_END) return REPEAT_START;
   return next;
 };
@@ -637,4 +676,5 @@ export {
   DEFAULT_CHARACTER,
   TYPE_HIGH,
   TYPE_LOW,
+  isAdjacent,
 };

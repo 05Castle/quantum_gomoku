@@ -628,8 +628,8 @@ const checkWin3P = (board, checker = null) => {
           }
         }
 
-        // 승리기준: 5목이상
-        if (count >= 5) {
+        // 승리기준: 4목이상
+        if (count >= 4) {
           wins[player].push({ player, stones });
         }
       }
